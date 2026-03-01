@@ -170,11 +170,31 @@ export default function Home() {
     const sectionGap = 10;
     const lineH = 5.5;
 
+    // ── Photo ──────────────────────────────────────────────────────────────
+    const photoSize = 28; // mm (width & height of the photo box)
+    const photoGap = 4;   // mm gap between text and photo
+    let headerTextW = contentW; // default: full content width
+
+    if (photo) {
+      try {
+        // Determine image format from the data URI
+        const formatMatch = photo.match(/^data:image\/(png|jpeg|jpg|webp);/i);
+        const imgFormat = formatMatch ? formatMatch[1].toUpperCase().replace('JPG', 'JPEG') : 'JPEG';
+        const photoX = pageW - mR - photoSize;
+        const photoY = y;
+        pdf.addImage(photo, imgFormat, photoX, photoY, photoSize, photoSize);
+        headerTextW = contentW - photoSize - photoGap;
+      } catch (err) {
+        console.warn('Failed to embed photo in PDF', err);
+      }
+    }
+
     // ── Header ─────────────────────────────────────────────────────────────
     pdf.setFont(FONT, 'bold');
     pdf.setFontSize(22);
-    pdf.text((personalInfo.fullName || 'Your Name').toUpperCase(), mL, y);
-    y += 8;
+    const nameLines = pdf.splitTextToSize((personalInfo.fullName || 'Your Name').toUpperCase(), headerTextW);
+    pdf.text(nameLines, mL, y);
+    y += nameLines.length * 8;
 
     const contactParts: string[] = [];
     if (personalInfo.email) contactParts.push(personalInfo.email);
@@ -186,6 +206,11 @@ export default function Home() {
       pdf.setFontSize(9);
       pdf.text(contactParts.join('   |   '), mL, y);
       y += 5;
+    }
+
+    // Make sure Y is past the photo before drawing the separator line
+    if (photo) {
+      y = Math.max(y, mT + photoSize + 2);
     }
 
     pdf.setLineWidth(0.5);
