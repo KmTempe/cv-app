@@ -46,38 +46,64 @@ export default function Home() {
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhoto(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { alert('Please select a valid image file.'); return; }
+    if (file.size > 5 * 1024 * 1024) { alert('Image must be smaller than 5 MB.'); return; }
+    const reader = new FileReader();
+    reader.onloadend = () => { setPhoto(reader.result as string); };
+    reader.readAsDataURL(file);
   };
 
   const handleJsonUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > 5 * 1024 * 1024) { alert('JSON file must be smaller than 5 MB.'); return; }
       const reader = new FileReader();
       reader.onload = (event) => {
         try {
           const data = JSON.parse(event.target?.result as string);
-          if (data.personalInfo) setPersonalInfo(data.personalInfo);
-          if (data.summary) setSummary(data.summary);
-          if (data.experience) setExperienceList(data.experience.map((exp: Omit<Experience, 'id'>, i: number) => ({ id: Date.now().toString() + i, ...exp })));
-          if (data.education) setEducationList(data.education.map((edu: Omit<Education, 'id'>, i: number) => ({ id: Date.now().toString() + i, ...edu })));
-          if (data.skills) {
-            setSkills(Array.isArray(data.skills) ? data.skills.join(", ") : data.skills);
+          // Validate and coerce each field to expected types before setting state
+          if (data.personalInfo && typeof data.personalInfo === 'object') {
+            setPersonalInfo({
+              fullName: String(data.personalInfo.fullName ?? ''),
+              email: String(data.personalInfo.email ?? ''),
+              phone: String(data.personalInfo.phone ?? ''),
+              address: String(data.personalInfo.address ?? ''),
+            });
           }
-          if (data.photo) setPhoto(data.photo);
+          if (typeof data.summary === 'string') setSummary(data.summary);
+          if (Array.isArray(data.experience)) {
+            setExperienceList(data.experience.map((exp: Omit<Experience, 'id'>, i: number) => ({
+              id: Date.now().toString() + i,
+              company: String(exp.company ?? ''),
+              position: String(exp.position ?? ''),
+              startDate: String(exp.startDate ?? ''),
+              endDate: String(exp.endDate ?? ''),
+              description: String(exp.description ?? ''),
+            })));
+          }
+          if (Array.isArray(data.education)) {
+            setEducationList(data.education.map((edu: Omit<Education, 'id'>, i: number) => ({
+              id: Date.now().toString() + i,
+              institution: String(edu.institution ?? ''),
+              degree: String(edu.degree ?? ''),
+              graduationYear: String(edu.graduationYear ?? ''),
+            })));
+          }
+          if (data.skills) {
+            setSkills(Array.isArray(data.skills) ? data.skills.map(String).join(', ') : String(data.skills));
+          }
+          // Only accept data:image/ URIs for the photo field
+          if (typeof data.photo === 'string' && data.photo.startsWith('data:image/')) {
+            setPhoto(data.photo);
+          }
         } catch (error) {
-          console.error("Error parsing JSON:", error);
-          alert("Invalid JSON file");
+          console.error('Error parsing JSON:', error);
+          alert('Invalid JSON file');
         }
       };
       reader.readAsText(file);
     }
-    // Reset file input so the same file could be selected again if needed
     if (e.target) e.target.value = '';
   };
 
