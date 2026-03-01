@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import pkg from "../../package.json";
 
@@ -86,72 +85,231 @@ export default function Home() {
     fileInputRef.current?.click();
   };
 
+  // Cache loaded fonts so we only fetch once per session
+  const loadNotoSans = async (pdf: jsPDF): Promise<void> => {
+    const toBase64 = async (url: string): Promise<string> => {
+      const res = await fetch(url);
+      const buf = await res.arrayBuffer();
+      const bytes = new Uint8Array(buf);
+      let binary = '';
+      for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+      return btoa(binary);
+    };
+
+    const [regular, bold, italic, boldItalic] = await Promise.all([
+      toBase64('/fonts/NotoSans-Regular.ttf'),
+      toBase64('/fonts/NotoSans-Bold.ttf'),
+      toBase64('/fonts/NotoSans-Italic.ttf'),
+      toBase64('/fonts/NotoSans-BoldItalic.ttf'),
+    ]);
+
+    pdf.addFileToVFS('NotoSans-Regular.ttf', regular);
+    pdf.addFont('NotoSans-Regular.ttf', 'NotoSans', 'normal');
+
+    pdf.addFileToVFS('NotoSans-Bold.ttf', bold);
+    pdf.addFont('NotoSans-Bold.ttf', 'NotoSans', 'bold');
+
+    pdf.addFileToVFS('NotoSans-Italic.ttf', italic);
+    pdf.addFont('NotoSans-Italic.ttf', 'NotoSans', 'italic');
+
+    pdf.addFileToVFS('NotoSans-BoldItalic.ttf', boldItalic);
+    pdf.addFont('NotoSans-BoldItalic.ttf', 'NotoSans', 'bolditalic');
+  };
+
+  const buildTextPdf = async (): Promise<jsPDF> => {
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+    // Embed NotoSans for full Unicode / Greek support
+    await loadNotoSans(pdf);
+    const FONT = 'NotoSans';
+
+
+    const pageW = pdf.internal.pageSize.getWidth();   // 210mm
+    const pageH = pdf.internal.pageSize.getHeight();  // 297mm
+    const mL = 20; // left margin
+    const mR = 20; // right margin
+    const mT = 20; // top margin
+    const mB = 20; // bottom margin
+    const contentW = pageW - mL - mR;
+    let y = mT;
+
+    // Add a new page and reset Y if we're about to overflow
+    const checkPageBreak = (needed: number) => {
+      if (y + needed > pageH - mB) {
+        pdf.addPage();
+        y = mT;
+      }
+    };
+
+    const sectionGap = 10;
+    const lineH = 5.5;
+
+    // ── Header ─────────────────────────────────────────────────────────────
+    pdf.setFont(FONT, 'bold');
+    pdf.setFontSize(22);
+    pdf.text((personalInfo.fullName || 'Your Name').toUpperCase(), mL, y);
+    y += 8;
+
+    const contactParts: string[] = [];
+    if (personalInfo.email) contactParts.push(personalInfo.email);
+    if (personalInfo.phone) contactParts.push(personalInfo.phone);
+    if (personalInfo.address) contactParts.push(personalInfo.address);
+
+    if (contactParts.length > 0) {
+      pdf.setFont(FONT, 'normal');
+      pdf.setFontSize(9);
+      pdf.text(contactParts.join('   |   '), mL, y);
+      y += 5;
+    }
+
+    pdf.setLineWidth(0.5);
+    pdf.line(mL, y, pageW - mR, y);
+    y += sectionGap;
+
+    // ── About Me ───────────────────────────────────────────────────────────
+    if (summary) {
+      checkPageBreak(20);
+      pdf.setFont(FONT, 'bold');
+      pdf.setFontSize(11);
+      pdf.text('ABOUT ME', mL, y);
+      y += 2;
+      pdf.setLineWidth(0.3);
+      pdf.line(mL, y, pageW - mR, y);
+      y += 5;
+
+      pdf.setFont(FONT, 'normal');
+      pdf.setFontSize(10);
+      const summaryLines = pdf.splitTextToSize(summary, contentW);
+      checkPageBreak(summaryLines.length * lineH + 4);
+      pdf.text(summaryLines, mL, y);
+      y += summaryLines.length * lineH + sectionGap;
+    }
+
+    // ── Work Experience ────────────────────────────────────────────────────
+    if (experienceList.length > 0) {
+      checkPageBreak(20);
+      pdf.setFont(FONT, 'bold');
+      pdf.setFontSize(11);
+      pdf.text('WORK EXPERIENCE', mL, y);
+      y += 2;
+      pdf.setLineWidth(0.3);
+      pdf.line(mL, y, pageW - mR, y);
+      y += 6;
+
+      for (const exp of experienceList) {
+        checkPageBreak(18);
+
+        // Position (bold) + date (normal, right-aligned)
+        pdf.setFont(FONT, 'bold');
+        pdf.setFontSize(10.5);
+        pdf.text(exp.position, mL, y);
+        const dateStr = exp.startDate
+          ? `${exp.startDate}${exp.endDate ? ` — ${exp.endDate}` : ''}`
+          : '';
+        if (dateStr) {
+          pdf.setFont(FONT, 'normal');
+          pdf.setFontSize(9);
+          pdf.text(dateStr, pageW - mR, y, { align: 'right' });
+        }
+        y += lineH;
+
+        // Company (bold-italic)
+        pdf.setFont(FONT, 'bolditalic');
+        pdf.setFontSize(9.5);
+        pdf.text(exp.company, mL, y);
+        y += lineH;
+
+        // Description
+        if (exp.description) {
+          pdf.setFont(FONT, 'normal');
+          pdf.setFontSize(9.5);
+          const descLines = pdf.splitTextToSize(exp.description, contentW);
+          checkPageBreak(descLines.length * lineH + 4);
+          pdf.text(descLines, mL, y);
+          y += descLines.length * lineH;
+        }
+        y += sectionGap * 0.7;
+      }
+      y += sectionGap * 0.5;
+    }
+
+    // ── Education ──────────────────────────────────────────────────────────
+    if (educationList.length > 0) {
+      checkPageBreak(20);
+      pdf.setFont(FONT, 'bold');
+      pdf.setFontSize(11);
+      pdf.text('EDUCATION', mL, y);
+      y += 2;
+      pdf.setLineWidth(0.3);
+      pdf.line(mL, y, pageW - mR, y);
+      y += 6;
+
+      for (const edu of educationList) {
+        checkPageBreak(14);
+
+        pdf.setFont(FONT, 'bold');
+        pdf.setFontSize(10.5);
+        pdf.text(edu.degree, mL, y);
+        if (edu.graduationYear) {
+          pdf.setFont(FONT, 'normal');
+          pdf.setFontSize(9);
+          pdf.text(edu.graduationYear, pageW - mR, y, { align: 'right' });
+        }
+        y += lineH;
+
+        pdf.setFont(FONT, 'italic');
+        pdf.setFontSize(9.5);
+        pdf.text(edu.institution, mL, y);
+        y += lineH + sectionGap * 0.5;
+      }
+      y += sectionGap * 0.5;
+    }
+
+    // ── Skills ─────────────────────────────────────────────────────────────
+    const skillsArr = cvData.skills;
+    if (skillsArr.length > 0) {
+      checkPageBreak(20);
+      pdf.setFont(FONT, 'bold');
+      pdf.setFontSize(11);
+      pdf.text('SKILLS', mL, y);
+      y += 2;
+      pdf.setLineWidth(0.3);
+      pdf.line(mL, y, pageW - mR, y);
+      y += 5;
+
+      pdf.setFont(FONT, 'normal');
+      pdf.setFontSize(10);
+      const skillsLines = pdf.splitTextToSize(skillsArr.join(' • '), contentW);
+      checkPageBreak(skillsLines.length * lineH);
+      pdf.text(skillsLines, mL, y);
+    }
+
+    return pdf;
+  };
+
   const handleDownloadPdf = async () => {
-    const element = cvRef.current;
-    if (!element) return;
-
     try {
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        logging: false
-      });
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
-      });
-
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      const pdf = await buildTextPdf();
       pdf.save('cv.pdf');
     } catch (err) {
-      console.error("Failed to generate PDF", err);
-      alert("Failed to generate PDF");
+      console.error('Failed to generate PDF', err);
+      alert('Failed to generate PDF');
     }
   };
 
   const generatePdfPreview = async () => {
-    const element = cvRef.current;
-    if (!element) return;
-
     setIsGeneratingPdf(true);
     try {
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        logging: true,
-        backgroundColor: '#ffffff',
-        windowWidth: element.scrollWidth,
-        windowHeight: element.scrollHeight,
-        x: 0,
-        y: 0,
-        scrollX: 0,
-        scrollY: 0
-      });
-      const imgData = canvas.toDataURL('image/jpeg', 0.8);
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
-      });
-
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-
-      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
-
+      const pdf = await buildTextPdf();
       const pdfDataUri = pdf.output('datauristring');
       setPdfUrl(pdfDataUri);
     } catch (err) {
-      console.error("Failed to generate PDF preview", err);
+      console.error('Failed to generate PDF preview', err);
     } finally {
       setIsGeneratingPdf(false);
     }
   };
+
 
   const addExperience = () => {
     setExperienceList([...experienceList, { id: Date.now().toString(), company: "", position: "", startDate: "", endDate: "", description: "" }]);
@@ -177,9 +335,8 @@ export default function Home() {
     setEducationList(educationList.filter(edu => edu.id !== id));
   };
 
-  // Auto-generate preview on initial mount so it's not empty, and load from local storage
+  // Load from local storage on initial mount
   useEffect(() => {
-    // Load from local storage if cookie exists
     const hasCookie = document.cookie.includes('cvDataSaved=true');
     if (hasCookie) {
       const savedData = localStorage.getItem('cvAutoSave');
@@ -190,21 +347,24 @@ export default function Home() {
           if (data.summary) setSummary(data.summary);
           if (data.experience) setExperienceList(data.experience);
           if (data.education) setEducationList(data.education);
-          if (data.skills) setSkills(data.skills.join(", "));
+          if (data.skills) setSkills(Array.isArray(data.skills) ? data.skills.join(", ") : data.skills);
           if (data.photo) setPhoto(data.photo);
         } catch (error) {
           console.error("Error loading saved data from local storage", error);
         }
       }
     }
-
-    // Small delay to ensure refs are attached
-    const timer = setTimeout(() => {
-      generatePdfPreview();
-    }, 500);
-    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Auto-refresh PDF preview whenever CV data changes (debounced)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      generatePdfPreview();
+    }, 1500);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [personalInfo, summary, experienceList, educationList, skills, photo]);
 
   // Save to local storage on every change
   useEffect(() => {
@@ -457,23 +617,22 @@ export default function Home() {
           <div className="flex flex-col gap-6 w-full lg:sticky lg:top-8 h-full min-h-[500px] lg:h-[calc(100vh-8rem)]">
             <div className="bg-card border border-border/30 rounded-2xl shadow-2xl overflow-hidden flex flex-col h-full ring-1 ring-border/20">
               <div className="flex items-center justify-between px-4 py-3 border-b border-border/30 bg-card z-10">
-                <div className="text-xs text-muted-foreground font-mono font-medium tracking-wide uppercase">PDF Preview</div>
+                <div className="flex items-center gap-2">
+                  <div className="text-xs text-muted-foreground font-mono font-medium tracking-wide uppercase">PDF Preview</div>
+                  {isGeneratingPdf && (
+                    <span className="flex items-center gap-1 text-xs text-primary/70">
+                      <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                      Updating...
+                    </span>
+                  )}
+                </div>
                 <button
                   onClick={generatePdfPreview}
                   disabled={isGeneratingPdf}
                   className="px-3 py-1.5 rounded-md bg-primary/10 text-primary hover:bg-primary/20 text-xs font-semibold transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isGeneratingPdf ? (
-                    <>
-                      <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                      Updating...
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                      Refresh Preview
-                    </>
-                  )}
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                  Refresh Preview
                 </button>
               </div>
               <div className="flex-1 bg-background/80 p-2 sm:p-4 flex flex-col justify-center items-center">
@@ -511,10 +670,11 @@ export default function Home() {
           className="w-[210mm] min-h-[297mm] bg-white overflow-hidden shrink-0"
           style={{
             backgroundColor: '#ffffff',
-            color: '#0f172a'
+            color: '#0f172a',
+            fontFamily: 'Inter, system-ui, -apple-system, sans-serif'
           }}
         >
-          <div className="p-12 h-full flex flex-col font-sans whitespace-normal break-words" style={{ color: '#000000' }}>
+          <div className="p-12 h-full flex flex-col whitespace-normal break-words" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
 
             {/* CV Header */}
             <div className="flex flex-row items-center justify-between border-b-2 pb-6 mb-6" style={{ borderBottomColor: '#000000' }}>
