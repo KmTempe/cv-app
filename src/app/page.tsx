@@ -29,7 +29,7 @@ export default function Home() {
     experience: experienceList.map(({ id, ...rest }) => rest),
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     education: educationList.map(({ id, ...rest }) => rest),
-    skills: skills.split(",").map(skill => skill.trim()).filter(Boolean),
+    skills: typeof skills === 'string' ? skills.split(",").map(skill => skill.trim()).filter(Boolean) : skills,
     photo
   };
 
@@ -67,7 +67,9 @@ export default function Home() {
           if (data.summary) setSummary(data.summary);
           if (data.experience) setExperienceList(data.experience.map((exp: Omit<Experience, 'id'>, i: number) => ({ id: Date.now().toString() + i, ...exp })));
           if (data.education) setEducationList(data.education.map((edu: Omit<Education, 'id'>, i: number) => ({ id: Date.now().toString() + i, ...edu })));
-          if (data.skills) setSkills(data.skills.join(", "));
+          if (data.skills) {
+            setSkills(Array.isArray(data.skills) ? data.skills.join(", ") : data.skills);
+          }
           if (data.photo) setPhoto(data.photo);
         } catch (error) {
           console.error("Error parsing JSON:", error);
@@ -213,7 +215,7 @@ export default function Home() {
         summary,
         experience: experienceList,
         education: educationList,
-        skills: skills.split(",").map(skill => skill.trim()).filter(Boolean),
+        skills: typeof skills === 'string' ? skills.split(",").map(skill => skill.trim()).filter(Boolean) : skills,
         photo
       };
       localStorage.setItem('cvAutoSave', JSON.stringify(dataToSave));
@@ -264,17 +266,23 @@ export default function Home() {
           </div>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <input type="file" accept=".json" className="hidden" ref={fileInputRef} onChange={handleJsonUpload} />
-            <div className="flex flex-col sm:flex-row gap-4 items-center">
-              <button onClick={handleDownloadJson} className="flex-1 w-full bg-card hover:bg-card/80 text-foreground font-medium py-3 px-4 rounded-xl transition-all flex justify-center items-center gap-2 border border-border shadow-sm active:scale-[0.98]">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                Download Data (JSON)
+            <div className="flex flex-col sm:flex-row gap-3 items-center">
+              <button onClick={handleDownloadJson} className="flex items-center justify-center gap-3 px-5 py-2 rounded-lg border border-primary/60 bg-transparent hover:bg-primary/10 transition-all group active:scale-[0.98]">
+                <svg className="w-4 h-4 text-zinc-300 group-hover:text-primary transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                <div className="flex flex-col items-center leading-tight">
+                  <span className="text-zinc-200 text-sm font-medium tracking-wide">Download Data</span>
+                  <span className="text-zinc-200 text-sm font-medium tracking-wide">(JSON)</span>
+                </div>
               </button>
-              <button onClick={triggerJsonUpload} className="flex-1 w-full bg-card hover:bg-card/80 text-foreground font-medium py-3 px-4 rounded-xl transition-all flex justify-center items-center gap-2 border border-border shadow-sm active:scale-[0.98]">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
-                Upload Data (JSON)
+              <button onClick={triggerJsonUpload} className="flex items-center justify-center gap-3 px-5 py-2 rounded-lg border border-primary/60 bg-transparent hover:bg-primary/10 transition-all group active:scale-[0.98]">
+                <svg className="w-4 h-4 text-zinc-300 group-hover:text-primary transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                <div className="flex flex-col items-center leading-tight">
+                  <span className="text-zinc-200 text-sm font-medium tracking-wide">Upload Data</span>
+                  <span className="text-zinc-200 text-sm font-medium tracking-wide">(JSON)</span>
+                </div>
               </button>
-              <button onClick={handleDownloadPdf} className="flex-1 w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium py-3 px-4 rounded-xl transition-all flex justify-center items-center gap-2 shadow-lg shadow-primary/20 active:scale-[0.98]">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+              <button onClick={handleDownloadPdf} className="flex items-center justify-center gap-2 px-6 py-4 rounded-lg bg-primary hover:bg-primary/90 text-background font-semibold text-sm transition-all shadow-[0_0_15px_rgba(100,255,218,0.2)] hover:shadow-[0_0_20px_rgba(100,255,218,0.4)] active:scale-[0.98] sm:ml-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                 Download PDF
               </button>
             </div>
@@ -440,7 +448,7 @@ export default function Home() {
               </h2>
               <div className="space-y-1.5">
                 <label className="text-xs font-mono text-muted-foreground uppercase tracking-wider">Comma separated list</label>
-                <input type="text" value={skills} onChange={e => setSkills(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all" placeholder="React, TypeScript, Node.js, Next.js" />
+                <input type="text" value={skills} onChange={e => setSkills(e.target.value)} className="w-full bg-input border border-border/50 rounded-xl px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 focus:border-ring transition-all" placeholder="React, TypeScript, Node.js, Next.js" />
               </div>
             </section>
           </div>
@@ -638,7 +646,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="font-mono">© {new Date().getFullYear()} CV Maker</p>
           <p className="flex items-center gap-2">
-            <span>Developer: <span className="text-foreground font-medium">Kosmas Temperekidis</span></span>
+            <span className="text-foreground font-medium">Kosmas Temperekidis</span>
             <span className="hidden md:inline text-muted-foreground/30">•</span>
             <span>Version: <span className="font-mono bg-input px-2 py-0.5 rounded text-foreground">v{pkg.version}</span></span>
           </p>
