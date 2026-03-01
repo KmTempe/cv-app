@@ -327,8 +327,14 @@ export default function Home() {
     setIsGeneratingPdf(true);
     try {
       const pdf = await buildTextPdf();
-      const pdfDataUri = pdf.output('datauristring');
-      setPdfUrl(pdfDataUri);
+      // Use blob: URL — data: URIs are blocked in iframes by CSP
+      const blob = pdf.output('blob');
+      const blobUrl = URL.createObjectURL(blob);
+      // Revoke the previous blob URL to prevent memory leaks
+      setPdfUrl(prev => {
+        if (prev && prev.startsWith('blob:')) URL.revokeObjectURL(prev);
+        return blobUrl;
+      });
     } catch (err) {
       console.error('Failed to generate PDF preview', err);
     } finally {
