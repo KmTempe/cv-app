@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import pkg from "../../package.json";
 
 type Experience = { id: string; company: string; position: string; startDate: string; endDate: string; description: string };
 type Education = { id: string; institution: string; degree: string; graduationYear: string };
@@ -174,8 +175,27 @@ export default function Home() {
     setEducationList(educationList.filter(edu => edu.id !== id));
   };
 
-  // Auto-generate preview on initial mount so it's not empty
+  // Auto-generate preview on initial mount so it's not empty, and load from local storage
   useEffect(() => {
+    // Load from local storage if cookie exists
+    const hasCookie = document.cookie.includes('cvDataSaved=true');
+    if (hasCookie) {
+      const savedData = localStorage.getItem('cvAutoSave');
+      if (savedData) {
+        try {
+          const data = JSON.parse(savedData);
+          if (data.personalInfo) setPersonalInfo(data.personalInfo);
+          if (data.summary) setSummary(data.summary);
+          if (data.experience) setExperienceList(data.experience);
+          if (data.education) setEducationList(data.education);
+          if (data.skills) setSkills(data.skills.join(", "));
+          if (data.photo) setPhoto(data.photo);
+        } catch (error) {
+          console.error("Error loading saved data from local storage", error);
+        }
+      }
+    }
+
     // Small delay to ensure refs are attached
     const timer = setTimeout(() => {
       generatePdfPreview();
@@ -183,6 +203,26 @@ export default function Home() {
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Save to local storage on every change
+  useEffect(() => {
+    // We don't want to save empty default states if nothing has been modified, but a simple approach is to always save
+    const timer = setTimeout(() => {
+      const dataToSave = {
+        personalInfo,
+        summary,
+        experience: experienceList,
+        education: educationList,
+        skills: skills.split(",").map(skill => skill.trim()).filter(Boolean),
+        photo
+      };
+      localStorage.setItem('cvAutoSave', JSON.stringify(dataToSave));
+      // Set a certified cookie that expires in 1 year (31536000 seconds)
+      document.cookie = "cvDataSaved=true; max-age=31536000; SameSite=Strict; Secure";
+    }, 500); // debounce savings
+
+    return () => clearTimeout(timer);
+  }, [personalInfo, summary, experienceList, educationList, skills, photo]);
 
   const moveExperience = (id: string, direction: 'up' | 'down') => {
     const index = experienceList.findIndex(e => e.id === id);
@@ -593,6 +633,17 @@ export default function Home() {
           :root { --cv-scale: 0.4; --cv-scale-width: calc(210mm * 0.4); }
         }
       `}} />
+
+      <footer className="w-full text-center py-8 text-sm text-zinc-500 border-t border-zinc-800/60 mt-auto">
+        <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4">
+          <p>© {new Date().getFullYear()} CV Maker</p>
+          <p className="flex items-center gap-2">
+            <span>Developer: <span className="text-zinc-300 font-medium">Kosmas Temperekidis</span></span>
+            <span className="hidden md:inline text-zinc-700">•</span>
+            <span>Version: <span className="font-mono bg-zinc-800/50 px-2 py-0.5 rounded text-zinc-300">v{pkg.version}</span></span>
+          </p>
+        </div>
+      </footer>
     </div >
   );
 }
