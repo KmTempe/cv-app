@@ -412,7 +412,8 @@ export default function Home() {
       };
       localStorage.setItem('cvAutoSave', JSON.stringify(dataToSave));
       // Set a certified cookie that expires in 1 year (31536000 seconds)
-      document.cookie = "cvDataSaved=true; max-age=31536000; SameSite=Strict; Secure";
+      const secureFlag = location.protocol === 'https:' ? '; Secure' : '';
+      document.cookie = `cvDataSaved=true; max-age=31536000; SameSite=Strict${secureFlag}`;
     }, 500); // debounce savings
 
     return () => clearTimeout(timer);
@@ -448,12 +449,22 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background text-foreground p-4 md:p-8 selection:bg-primary/30">
+      {/* Fixed home button — top-right corner of the viewport */}
+      <a
+        href="https://l7feeders.dev/"
+        target="_blank"
+        rel="noopener noreferrer"
+        title="Home — l7feeders.dev"
+        className="fixed top-3 right-3 z-50 p-2 rounded-lg border border-border/40 bg-card hover:bg-primary/10 hover:border-primary/60 text-zinc-400 hover:text-primary transition-all shadow-md"
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+        </svg>
+      </a>
       <div className="max-w-7xl mx-auto space-y-8">
         <header className="flex flex-col xl:flex-row items-center justify-between gap-4 pb-6 border-b border-zinc-800">
-          <div>
-            <h1 className="text-3xl md:text-5xl font-bold text-primary tracking-tight">
-              CV Maker
-            </h1>
+          <div className="flex-1">
+            <h1 className="text-3xl md:text-5xl font-bold text-primary tracking-tight">CV Maker</h1>
             <p className="text-zinc-400 mt-2 text-sm md:text-base">Build your curriculum vitae, preview instantly, and export to PDF.</p>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-3">
