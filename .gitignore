@@ -41,7 +41,7 @@ yarn-error.log*
 next-env.d.ts
 .vscode
 /memory
-src/app/page.tsx
+
 /.agents/workflows
 /pr request.mdtest_err.txt
 test_output.txt
@@ -49,3 +49,4 @@ test_err.txt
 .gitignore
 pr request.md
 test_plan.md
+/build.log
