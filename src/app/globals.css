@@ -47,7 +47,7 @@
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
-  
+
   --font-sans: var(--font-inter);
   --font-mono: var(--font-fira-code);
 }
@@ -58,4 +58,73 @@ body {
   font-family: var(--font-sans), Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #112240;
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #8892b0;
+}
+
+/* Dynamic scaling for the CV preview */
+@media (max-width: 1536px) {
+  :root {
+    --cv-scale: 0.85;
+    --cv-scale-width: calc(210mm * 0.85);
+  }
+}
+
+@media (max-width: 1280px) {
+  :root {
+    --cv-scale: 0.75;
+    --cv-scale-width: calc(210mm * 0.75);
+  }
+}
+
+@media (max-width: 1024px) {
+  :root {
+    --cv-scale: 0.9;
+    --cv-scale-width: calc(210mm * 0.9);
+  }
+}
+
+@media (max-width: 768px) {
+  :root {
+    --cv-scale: 0.8;
+    --cv-scale-width: calc(210mm * 0.8);
+  }
+}
+
+@media (max-width: 640px) {
+  :root {
+    --cv-scale: 0.65;
+    --cv-scale-width: calc(210mm * 0.65);
+  }
+}
+
+@media (max-width: 480px) {
+  :root {
+    --cv-scale: 0.5;
+    --cv-scale-width: calc(210mm * 0.5);
+  }
+}
+
+@media (max-width: 380px) {
+  :root {
+    --cv-scale: 0.4;
+    --cv-scale-width: calc(210mm * 0.4);
+  }
 }

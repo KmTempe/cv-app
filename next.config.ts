@@ -23,6 +23,10 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
+  compress: true, // Compress assets
+  experimental: {
+    optimizePackageImports: ["lucide-react", "date-fns"],
+  },
   async headers() {
     return [
       {

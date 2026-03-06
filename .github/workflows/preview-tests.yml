@@ -1,0 +1,33 @@
+name: Preview Tests & Build
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test-and-build:
+    name: Test and Build Verification
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
+          
+      - name: Install Dependencies
+        run: npm ci
+        
+      - name: Run Tests
+        run: npm run test
+        
+      - name: Run Linter
+        run: npm run lint
+        
+      - name: Test Build (Verify Next.js build)
+        run: npm run build

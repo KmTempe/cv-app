@@ -12,8 +12,13 @@ export default function Home() {
   const [summary, setSummary] = useState("");
   const [experienceList, setExperienceList] = useState<Experience[]>([]);
   const [educationList, setEducationList] = useState<Education[]>([]);
-  const [skills, setSkills] = useState("");
+  const [skills, setSkills] = useState<string[]>([]);
+  const [skillInput, setSkillInput] = useState("");
   const [photo, setPhoto] = useState<string | null>(null);
+
+  // FLIP animation refs
+  const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const flipDataRef = useRef<{ id1: string; id2: string; rect1: DOMRect; rect2: DOMRect } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -24,7 +29,7 @@ export default function Home() {
     experience: experienceList.map(({ id, ...rest }) => rest),
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     education: educationList.map(({ id, ...rest }) => rest),
-    skills: typeof skills === 'string' ? skills.split(",").map(skill => skill.trim()).filter(Boolean) : skills,
+    skills: skills,
     photo
   };
 
@@ -87,7 +92,7 @@ export default function Home() {
             })));
           }
           if (data.skills) {
-            setSkills(Array.isArray(data.skills) ? data.skills.map(String).join(', ') : String(data.skills));
+            setSkills(Array.isArray(data.skills) ? data.skills.map(String) : typeof data.skills === 'string' ? data.skills.split(',').map((s: string) => s.trim()).filter(Boolean) : []);
           }
           // Only accept data:image/ URIs for the photo field
           if (typeof data.photo === 'string' && data.photo.startsWith('data:image/')) {
@@ -380,7 +385,7 @@ export default function Home() {
           if (data.summary) setSummary(data.summary);
           if (data.experience) setExperienceList(data.experience);
           if (data.education) setEducationList(data.education);
-          if (data.skills) setSkills(Array.isArray(data.skills) ? data.skills.join(", ") : data.skills);
+          if (data.skills) setSkills(Array.isArray(data.skills) ? data.skills.map(String) : typeof data.skills === 'string' ? data.skills.split(',').map((s: string) => s.trim()).filter(Boolean) : []);
           if (data.photo) setPhoto(data.photo);
         } catch (error) {
           console.error("Error loading saved data from local storage", error);
@@ -399,7 +404,7 @@ export default function Home() {
         summary,
         experience: experienceList,
         education: educationList,
-        skills: typeof skills === 'string' ? skills.split(",").map(skill => skill.trim()).filter(Boolean) : skills,
+        skills: skills,
         photo
       };
       localStorage.setItem('cvAutoSave', JSON.stringify(dataToSave));
@@ -414,45 +419,80 @@ export default function Home() {
   const moveExperience = (id: string, direction: 'up' | 'down') => {
     const index = experienceList.findIndex(e => e.id === id);
     if (index === -1) return;
-    if (direction === 'up' && index > 0) {
-      const newList = [...experienceList];
-      [newList[index - 1], newList[index]] = [newList[index], newList[index - 1]];
-      setExperienceList(newList);
-    } else if (direction === 'down' && index < experienceList.length - 1) {
-      const newList = [...experienceList];
-      [newList[index + 1], newList[index]] = [newList[index], newList[index + 1]];
-      setExperienceList(newList);
+    let swapIndex = -1;
+    if (direction === 'up' && index > 0) swapIndex = index - 1;
+    else if (direction === 'down' && index < experienceList.length - 1) swapIndex = index + 1;
+    if (swapIndex === -1) return;
+
+    // FIRST: capture positions before swap
+    const swapId = experienceList[swapIndex].id;
+    const el1 = cardRefs.current.get(id);
+    const el2 = cardRefs.current.get(swapId);
+    if (el1 && el2) {
+      flipDataRef.current = { id1: id, id2: swapId, rect1: el1.getBoundingClientRect(), rect2: el2.getBoundingClientRect() };
     }
+
+    const newList = [...experienceList];
+    [newList[index], newList[swapIndex]] = [newList[swapIndex], newList[index]];
+    setExperienceList(newList);
   };
 
   const moveEducation = (id: string, direction: 'up' | 'down') => {
     const index = educationList.findIndex(e => e.id === id);
     if (index === -1) return;
-    if (direction === 'up' && index > 0) {
-      const newList = [...educationList];
-      [newList[index - 1], newList[index]] = [newList[index], newList[index - 1]];
-      setEducationList(newList);
-    } else if (direction === 'down' && index < educationList.length - 1) {
-      const newList = [...educationList];
-      [newList[index + 1], newList[index]] = [newList[index], newList[index + 1]];
-      setEducationList(newList);
+    let swapIndex = -1;
+    if (direction === 'up' && index > 0) swapIndex = index - 1;
+    else if (direction === 'down' && index < educationList.length - 1) swapIndex = index + 1;
+    if (swapIndex === -1) return;
+
+    // FIRST: capture positions before swap
+    const swapId = educationList[swapIndex].id;
+    const el1 = cardRefs.current.get(id);
+    const el2 = cardRefs.current.get(swapId);
+    if (el1 && el2) {
+      flipDataRef.current = { id1: id, id2: swapId, rect1: el1.getBoundingClientRect(), rect2: el2.getBoundingClientRect() };
     }
+
+    const newList = [...educationList];
+    [newList[index], newList[swapIndex]] = [newList[swapIndex], newList[index]];
+    setEducationList(newList);
   };
+
+  // FLIP: after DOM re-renders, animate cards from old position to new
+  useEffect(() => {
+    if (!flipDataRef.current) return;
+    const { id1, id2, rect1, rect2 } = flipDataRef.current;
+    flipDataRef.current = null;
+
+    const el1 = cardRefs.current.get(id1);
+    const el2 = cardRefs.current.get(id2);
+    if (!el1 || !el2) return;
+
+    // LAST: get new positions
+    const newRect1 = el1.getBoundingClientRect();
+    const newRect2 = el2.getBoundingClientRect();
+
+    // INVERT: move elements back to old positions
+    const dy1 = rect1.top - newRect1.top;
+    const dy2 = rect2.top - newRect2.top;
+
+    el1.style.transform = `translateY(${dy1}px)`;
+    el2.style.transform = `translateY(${dy2}px)`;
+    el1.style.transition = 'none';
+    el2.style.transition = 'none';
+
+    // PLAY: animate to new positions
+    requestAnimationFrame(() => {
+      el1.style.transition = 'transform 0.3s ease';
+      el2.style.transition = 'transform 0.3s ease';
+      el1.style.transform = '';
+      el2.style.transform = '';
+    });
+  }, [experienceList, educationList]);
 
   return (
     <div className="min-h-screen bg-background text-foreground p-4 md:p-8 selection:bg-primary/30">
-      {/* Fixed home button — top-right corner of the viewport */}
-      <a
-        href="https://l7feeders.dev/"
-        target="_blank"
-        rel="noopener noreferrer"
-        title="Home — l7feeders.dev"
-        className="fixed top-3 right-3 z-50 p-2 rounded-lg border border-border/40 bg-card hover:bg-primary/10 hover:border-primary/60 text-zinc-400 hover:text-primary transition-all shadow-md"
-      >
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-        </svg>
-      </a>
+      {/* Main Container */}
       <div className="max-w-[1600px] w-full mx-auto space-y-8 pb-8 md:pb-16">
         <header className="flex flex-col xl:flex-row items-center justify-between gap-4 pb-6 border-b border-zinc-800">
           <div className="flex-1">
@@ -462,13 +502,24 @@ export default function Home() {
           <div className="flex flex-wrap items-center justify-center gap-3">
             <input type="file" accept=".json" className="hidden" ref={fileInputRef} onChange={handleJsonUpload} />
             <div className="flex gap-3 items-center">
-              <button onClick={triggerJsonUpload} title="Upload Data (JSON)" className="p-3 rounded-xl border border-primary/40 text-zinc-400 hover:text-primary hover:bg-primary/10 transition-all shadow-sm">
+              <a
+                href="https://l7feeders.dev/"
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Home — l7feeders.dev"
+                className="p-3 rounded-full border border-primary/40 text-zinc-400 hover:text-primary hover:bg-primary/10 transition-all shadow-sm flex items-center justify-center"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m3 12 9-9 9 9M5 10.5V21h4v-6h6v6h4V10.5" />
+                </svg>
+              </a>
+              <button onClick={triggerJsonUpload} title="Upload Data (JSON)" className="p-3 rounded-full border border-primary/40 text-zinc-400 hover:text-primary hover:bg-primary/10 transition-all shadow-sm">
                 <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M5 20h14v-2H5v2zM12 4L5 11h4v6h6v-6h4L12 4z" /></svg>
               </button>
-              <button onClick={handleDownloadJson} title="Download Data (JSON)" className="p-3 rounded-xl border border-primary/40 text-zinc-400 hover:text-primary hover:bg-primary/10 transition-all shadow-sm">
+              <button onClick={handleDownloadJson} title="Download Data (JSON)" className="p-3 rounded-full border border-primary/40 text-zinc-400 hover:text-primary hover:bg-primary/10 transition-all shadow-sm">
                 <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z" /></svg>
               </button>
-              <button onClick={handleDownloadPdf} title="Download PDF" className="p-3 rounded-xl bg-primary hover:bg-primary/90 text-background transition-all shadow-[0_0_15px_rgba(100,255,218,0.2)] hover:shadow-[0_0_20px_rgba(100,255,218,0.4)] ml-1">
+              <button onClick={handleDownloadPdf} title="Download PDF" className="p-3 rounded-full bg-primary hover:bg-primary/90 text-background transition-all shadow-[0_0_15px_rgba(100,255,218,0.2)] hover:shadow-[0_0_20px_rgba(100,255,218,0.4)] ml-1">
                 <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm4-3H19v1h1.5V11H19v2h-1.5V7h3v1.5zM9 9.5h1v-1H9v1zM14 11.5h1v-3h-1v3zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6z" /></svg>
               </button>
             </div>
@@ -545,20 +596,27 @@ export default function Home() {
               <div className="space-y-4">
                 {experienceList.length === 0 && <p className="text-muted-foreground text-sm italic">No experience added yet.</p>}
                 {experienceList.map((exp, index) => (
-                  <div key={exp.id} className="relative bg-background border border-border/50 p-4 rounded-xl space-y-4 group">
-                    <div className="absolute -top-3 -right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all z-10">
+                  <div key={exp.id} ref={el => { if (el) cardRefs.current.set(exp.id, el); else cardRefs.current.delete(exp.id); }} className="bg-background border border-border/50 p-4 rounded-xl space-y-4 group">
+                    <div className="flex items-center justify-end gap-2 mb-2">
                       {index > 0 && (
-                        <button onClick={() => moveExperience(exp.id, 'up')} className="bg-input text-muted-foreground hover:bg-input/80 hover:text-foreground p-1.5 rounded-full shadow-md">
+                        <button onClick={() => moveExperience(exp.id, 'up')} title="Move Up" className="bg-input text-muted-foreground hover:bg-input/80 hover:text-foreground p-1.5 rounded-full shadow-sm transition-colors">
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg>
                         </button>
                       )}
                       {index < experienceList.length - 1 && (
-                        <button onClick={() => moveExperience(exp.id, 'down')} className="bg-input text-muted-foreground hover:bg-input/80 hover:text-foreground p-1.5 rounded-full shadow-md">
+                        <button onClick={() => moveExperience(exp.id, 'down')} title="Move Down" className="bg-input text-muted-foreground hover:bg-input/80 hover:text-foreground p-1.5 rounded-full shadow-sm transition-colors">
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                         </button>
                       )}
-                      <button onClick={() => removeExperience(exp.id)} className="bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white p-1.5 rounded-full shadow-md">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                      <button
+                        onClick={() => removeExperience(exp.id)}
+                        title="Remove Entry"
+                        className="p-1.5 rounded-full shadow-sm transition-colors"
+                        style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)' }}
+                        onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#ef4444'; e.currentTarget.style.color = '#ffffff'; }}
+                        onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'; e.currentTarget.style.color = '#ef4444'; }}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                       </button>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -594,20 +652,27 @@ export default function Home() {
               <div className="space-y-4">
                 {educationList.length === 0 && <p className="text-muted-foreground text-sm italic">No education added yet.</p>}
                 {educationList.map((edu, index) => (
-                  <div key={edu.id} className="relative bg-background border border-border/50 p-4 rounded-xl space-y-4 group">
-                    <div className="absolute -top-3 -right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all z-10">
+                  <div key={edu.id} ref={el => { if (el) cardRefs.current.set(edu.id, el); else cardRefs.current.delete(edu.id); }} className="bg-background border border-border/50 p-4 rounded-xl space-y-4 group">
+                    <div className="flex items-center justify-end gap-2 mb-2">
                       {index > 0 && (
-                        <button onClick={() => moveEducation(edu.id, 'up')} className="bg-input text-muted-foreground hover:bg-input/80 hover:text-foreground p-1.5 rounded-full shadow-md">
+                        <button onClick={() => moveEducation(edu.id, 'up')} title="Move Up" className="bg-input text-muted-foreground hover:bg-input/80 hover:text-foreground p-1.5 rounded-full shadow-sm transition-colors">
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg>
                         </button>
                       )}
                       {index < educationList.length - 1 && (
-                        <button onClick={() => moveEducation(edu.id, 'down')} className="bg-input text-muted-foreground hover:bg-input/80 hover:text-foreground p-1.5 rounded-full shadow-md">
+                        <button onClick={() => moveEducation(edu.id, 'down')} title="Move Down" className="bg-input text-muted-foreground hover:bg-input/80 hover:text-foreground p-1.5 rounded-full shadow-sm transition-colors">
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                         </button>
                       )}
-                      <button onClick={() => removeEducation(edu.id)} className="bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white p-1.5 rounded-full shadow-md">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                      <button
+                        onClick={() => removeEducation(edu.id)}
+                        title="Remove Entry"
+                        className="p-1.5 rounded-full shadow-sm transition-colors"
+                        style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)' }}
+                        onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#ef4444'; e.currentTarget.style.color = '#ffffff'; }}
+                        onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'; e.currentTarget.style.color = '#ef4444'; }}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                       </button>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -632,9 +697,85 @@ export default function Home() {
                 <span className="bg-primary/20 text-primary p-1.5 rounded-lg"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg></span>
                 Skills
               </h2>
-              <div className="space-y-1.5">
-                <label className="text-xs font-mono text-muted-foreground uppercase tracking-wider">Comma separated list</label>
-                <input type="text" value={skills} onChange={e => setSkills(e.target.value)} className="w-full bg-input border border-border/50 rounded-xl px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 focus:border-ring transition-all" placeholder="React, TypeScript, Node.js, Next.js" />
+
+              {/* Skill Pills */}
+              {skills.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '16px' }}>
+                  {skills.map((skill, index) => (
+                    <span
+                      key={index}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        padding: '8px 16px',
+                        borderRadius: '9999px',
+                        backgroundColor: 'rgba(100, 255, 218, 0.12)',
+                        border: '1px solid rgba(100, 255, 218, 0.25)',
+                        color: '#64ffda',
+                        fontFamily: 'var(--font-mono), "Fira Code", monospace',
+                        fontSize: '0.85rem',
+                        lineHeight: '1.4',
+                        whiteSpace: 'nowrap',
+                        cursor: 'default',
+                        transition: 'background-color 0.2s, border-color 0.2s',
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.backgroundColor = 'rgba(100, 255, 218, 0.22)';
+                        e.currentTarget.style.borderColor = 'rgba(100, 255, 218, 0.45)';
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.backgroundColor = 'rgba(100, 255, 218, 0.12)';
+                        e.currentTarget.style.borderColor = 'rgba(100, 255, 218, 0.25)';
+                      }}
+                    >
+                      {skill}
+                      <button
+                        onClick={() => setSkills(skills.filter((_, i) => i !== index))}
+                        title="Remove skill"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          background: 'none',
+                          border: 'none',
+                          color: 'rgba(100, 255, 218, 0.45)',
+                          cursor: 'pointer',
+                          padding: '0',
+                          lineHeight: '1',
+                          transition: 'color 0.15s',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.color = '#f87171'; }}
+                        onMouseLeave={e => { e.currentTarget.style.color = 'rgba(100, 255, 218, 0.45)'; }}
+                      >
+                        <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Input */}
+              <div>
+                <label className="text-xs font-mono text-muted-foreground uppercase tracking-wider block mb-2">Comma separated list</label>
+                <input
+                  type="text"
+                  value={skillInput}
+                  onChange={e => setSkillInput(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === ',' || e.key === 'Enter') {
+                      e.preventDefault();
+                      const newSkill = skillInput.replace(',', '').trim();
+                      if (newSkill && !skills.includes(newSkill)) {
+                        setSkills([...skills, newSkill]);
+                      }
+                      setSkillInput('');
+                    }
+                  }}
+                  className="w-full bg-input border border-border/50 rounded-xl px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 focus:border-ring transition-all"
+                  placeholder="Type a skill and press comma or Enter... (e.g. React, Docker)"
+                />
               </div>
             </section>
           </div>
@@ -647,9 +788,9 @@ export default function Home() {
                   <div className="text-xs text-muted-foreground font-mono font-medium tracking-wide uppercase">Live Preview</div>
                 </div>
               </div>
-              <div className="flex-1 bg-zinc-100 p-4 sm:p-8 flex justify-center items-start overflow-auto custom-scrollbar">
+              <div className="flex-1 bg-zinc-100 p-4 sm:p-8 flex items-start overflow-auto custom-scrollbar">
                 <div
-                  className="bg-white shadow-lg origin-top transition-transform duration-200 flex flex-col"
+                  className="bg-white shadow-lg origin-top-left transition-transform duration-200 flex flex-col mx-auto"
                   style={{
                     width: '210mm',
                     minHeight: '297mm', // Minimum A4 Height, can grow infinitely
@@ -657,7 +798,8 @@ export default function Home() {
                     backgroundColor: '#ffffff',
                     color: '#0f172a',
                     fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
-                    marginBottom: 'calc(297mm * (var(--cv-scale, 1) - 1))' // Offset the extra layout space left by scale
+                    marginBottom: 'calc((1 - var(--cv-scale, 1)) * -297mm)', // Reclaim the vertical space lost by scaling
+                    marginRight: 'calc((1 - var(--cv-scale, 1)) * -210mm)' // Reclaim horizontal space for perfect centering
                   }}
                 >
                   <div className="h-full flex flex-col whitespace-normal break-words" style={{ padding: '20mm', color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
@@ -752,47 +894,6 @@ export default function Home() {
           </div>
         </div>
       </div>
-
-      <style dangerouslySetInnerHTML={{
-        __html: `
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 8px;
-          height: 8px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #112240;
-          border-radius: 4px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #8892b0;
-        }
-
-        /* Dynamic scaling for the CV preview */
-        @media (max-width: 1536px) {
-          :root { --cv-scale: 0.85; --cv-scale-width: calc(210mm * 0.85); flex: 1; justify-content: center; }
-        }
-        @media (max-width: 1280px) {
-          :root { --cv-scale: 0.75; --cv-scale-width: calc(210mm * 0.75); }
-        }
-        @media (max-width: 1024px) {
-          :root { --cv-scale: 0.9; --cv-scale-width: calc(210mm * 0.9); }
-        }
-        @media (max-width: 768px) {
-          :root { --cv-scale: 0.8; --cv-scale-width: calc(210mm * 0.8); }
-        }
-        @media (max-width: 640px) {
-          :root { --cv-scale: 0.65; --cv-scale-width: calc(210mm * 0.65); }
-        }
-        @media (max-width: 480px) {
-          :root { --cv-scale: 0.5; --cv-scale-width: calc(210mm * 0.5); }
-        }
-        @media (max-width: 380px) {
-          :root { --cv-scale: 0.4; --cv-scale-width: calc(210mm * 0.4); }
-        }
-      `}} />
 
       <footer className="w-full text-center py-8 text-sm text-muted-foreground border-t border-border/30 mt-auto">
         <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4">
