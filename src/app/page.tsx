@@ -15,10 +15,6 @@ export default function Home() {
   const [skills, setSkills] = useState("");
   const [photo, setPhoto] = useState<string | null>(null);
 
-  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
-
-  const cvRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const cvData = {
@@ -348,26 +344,6 @@ export default function Home() {
     }
   };
 
-  const generatePdfPreview = async () => {
-    setIsGeneratingPdf(true);
-    try {
-      const pdf = await buildTextPdf();
-      // Use blob: URL — data: URIs are blocked in iframes by CSP
-      const blob = pdf.output('blob');
-      const blobUrl = URL.createObjectURL(blob);
-      // Revoke the previous blob URL to prevent memory leaks
-      setPdfUrl(prev => {
-        if (prev && prev.startsWith('blob:')) URL.revokeObjectURL(prev);
-        return blobUrl;
-      });
-    } catch (err) {
-      console.error('Failed to generate PDF preview', err);
-    } finally {
-      setIsGeneratingPdf(false);
-    }
-  };
-
-
   const addExperience = () => {
     setExperienceList([...experienceList, { id: Date.now().toString(), company: "", position: "", startDate: "", endDate: "", description: "" }]);
   };
@@ -413,15 +389,6 @@ export default function Home() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Auto-refresh PDF preview whenever CV data changes (debounced)
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      generatePdfPreview();
-    }, 1500);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [personalInfo, summary, experienceList, educationList, skills, photo]);
 
   // Save to local storage on every change
   useEffect(() => {
@@ -486,7 +453,7 @@ export default function Home() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
         </svg>
       </a>
-      <div className="max-w-7xl mx-auto space-y-8">
+      <div className="max-w-[1600px] w-full mx-auto space-y-8 pb-8 md:pb-16">
         <header className="flex flex-col xl:flex-row items-center justify-between gap-4 pb-6 border-b border-zinc-800">
           <div className="flex-1">
             <h1 className="text-3xl md:text-5xl font-bold text-primary tracking-tight">CV Maker</h1>
@@ -494,24 +461,15 @@ export default function Home() {
           </div>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <input type="file" accept=".json" className="hidden" ref={fileInputRef} onChange={handleJsonUpload} />
-            <div className="flex flex-col sm:flex-row gap-3 items-center">
-              <button onClick={handleDownloadJson} className="flex items-center justify-center gap-3 px-5 py-2 rounded-lg border border-primary/60 bg-transparent hover:bg-primary/10 transition-all group active:scale-[0.98]">
-                <svg className="w-4 h-4 text-zinc-300 group-hover:text-primary transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                <div className="flex flex-col items-center leading-tight">
-                  <span className="text-zinc-200 text-sm font-medium tracking-wide">Download Data</span>
-                  <span className="text-zinc-200 text-sm font-medium tracking-wide">(JSON)</span>
-                </div>
+            <div className="flex gap-3 items-center">
+              <button onClick={triggerJsonUpload} title="Upload Data (JSON)" className="p-3 rounded-xl border border-primary/40 text-zinc-400 hover:text-primary hover:bg-primary/10 transition-all shadow-sm">
+                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M5 20h14v-2H5v2zM12 4L5 11h4v6h6v-6h4L12 4z" /></svg>
               </button>
-              <button onClick={triggerJsonUpload} className="flex items-center justify-center gap-3 px-5 py-2 rounded-lg border border-primary/60 bg-transparent hover:bg-primary/10 transition-all group active:scale-[0.98]">
-                <svg className="w-4 h-4 text-zinc-300 group-hover:text-primary transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
-                <div className="flex flex-col items-center leading-tight">
-                  <span className="text-zinc-200 text-sm font-medium tracking-wide">Upload Data</span>
-                  <span className="text-zinc-200 text-sm font-medium tracking-wide">(JSON)</span>
-                </div>
+              <button onClick={handleDownloadJson} title="Download Data (JSON)" className="p-3 rounded-xl border border-primary/40 text-zinc-400 hover:text-primary hover:bg-primary/10 transition-all shadow-sm">
+                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z" /></svg>
               </button>
-              <button onClick={handleDownloadPdf} className="flex items-center justify-center gap-2 px-6 py-4 rounded-lg bg-primary hover:bg-primary/90 text-background font-semibold text-sm transition-all shadow-[0_0_15px_rgba(100,255,218,0.2)] hover:shadow-[0_0_20px_rgba(100,255,218,0.4)] active:scale-[0.98] sm:ml-2">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                Download PDF
+              <button onClick={handleDownloadPdf} title="Download PDF" className="p-3 rounded-xl bg-primary hover:bg-primary/90 text-background transition-all shadow-[0_0_15px_rgba(100,255,218,0.2)] hover:shadow-[0_0_20px_rgba(100,255,218,0.4)] ml-1">
+                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm4-3H19v1h1.5V11H19v2h-1.5V7h3v1.5zM9 9.5h1v-1H9v1zM14 11.5h1v-3h-1v3zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6z" /></svg>
               </button>
             </div>
           </div>
@@ -520,7 +478,7 @@ export default function Home() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start relative">
 
           {/* EDITOR COLUMN */}
-          <div className="flex flex-col gap-6 w-full pb-20">
+          <div className="flex flex-col gap-6 w-full">
 
             {/* Personal Info */}
             <section className="bg-card border border-border/30 p-6 rounded-2xl shadow-xl backdrop-blur-md">
@@ -686,145 +644,111 @@ export default function Home() {
             <div className="bg-card border border-border/30 rounded-2xl shadow-2xl overflow-hidden flex flex-col h-full ring-1 ring-border/20">
               <div className="flex items-center justify-between px-4 py-3 border-b border-border/30 bg-card z-10">
                 <div className="flex items-center gap-2">
-                  <div className="text-xs text-muted-foreground font-mono font-medium tracking-wide uppercase">PDF Preview</div>
-                  {isGeneratingPdf && (
-                    <span className="flex items-center gap-1 text-xs text-primary/70">
-                      <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                      Updating...
-                    </span>
-                  )}
+                  <div className="text-xs text-muted-foreground font-mono font-medium tracking-wide uppercase">Live Preview</div>
                 </div>
-                <button
-                  onClick={generatePdfPreview}
-                  disabled={isGeneratingPdf}
-                  className="px-3 py-1.5 rounded-md bg-primary/10 text-primary hover:bg-primary/20 text-xs font-semibold transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+              </div>
+              <div className="flex-1 bg-zinc-100 p-4 sm:p-8 flex justify-center items-start overflow-auto custom-scrollbar">
+                <div
+                  className="bg-white shadow-lg origin-top transition-transform duration-200 flex flex-col"
+                  style={{
+                    width: '210mm',
+                    minHeight: '297mm', // Minimum A4 Height, can grow infinitely
+                    transform: 'scale(var(--cv-scale, 1))',
+                    backgroundColor: '#ffffff',
+                    color: '#0f172a',
+                    fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+                    marginBottom: 'calc(297mm * (var(--cv-scale, 1) - 1))' // Offset the extra layout space left by scale
+                  }}
                 >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                  Refresh Preview
-                </button>
-              </div>
-              <div className="flex-1 bg-background/80 p-2 sm:p-4 flex flex-col justify-center items-center">
-                {pdfUrl ? (
-                  <iframe src={pdfUrl} className="w-full h-full border-none rounded-lg shadow-inner bg-zinc-100" title="CV PDF Preview" />
-                ) : (
-                  <div className="text-center p-8 max-w-sm">
-                    <div className="w-16 h-16 bg-input rounded-full flex items-center justify-center mx-auto mb-4 text-muted-foreground">
-                      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                  <div className="h-full flex flex-col whitespace-normal break-words" style={{ padding: '20mm', color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+
+                    {/* CV Header */}
+                    <div className="flex flex-row items-center justify-between pb-4 mb-4 border-b-[0.5mm]" style={{ borderBottomColor: '#000000' }}>
+                      <div className="flex-1">
+                        <h1 className="font-bold tracking-tight leading-none mb-2 uppercase" style={{ color: '#000000', fontSize: '22pt' }}>
+                          {personalInfo.fullName || "Your Name"}
+                        </h1>
+                        <div className="flex flex-wrap gap-x-6 gap-y-1 font-normal" style={{ color: '#000000', fontSize: '9pt' }}>
+                          {personalInfo.email && <span>{personalInfo.email}</span>}
+                          {personalInfo.phone && <span>{personalInfo.phone}</span>}
+                          {personalInfo.address && <span>{personalInfo.address}</span>}
+                        </div>
+                      </div>
+                      {photo && (
+                        <div className="ml-4 shrink-0">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={photo} alt="Profile" className="object-cover border" style={{ width: '28mm', height: '28mm', borderColor: '#000000' }} />
+                        </div>
+                      )}
                     </div>
-                    <h3 className="text-foreground font-medium mb-2">No Preview Generated</h3>
-                    <p className="text-muted-foreground text-sm mb-6">Click refresh below to generate a high-fidelity PDF preview using your current data.</p>
-                    <button
-                      onClick={generatePdfPreview}
-                      className="px-5 py-2 rounded-lg bg-input hover:bg-input/80 text-foreground text-sm font-medium transition-colors border border-border/50 shadow-sm"
-                    >
-                      Generate Preview
-                    </button>
+
+                    {/* Main Content Area - Switched to simple vertical flow for better ATS/OCR reading */}
+                    <div className="flex-1 space-y-6" style={{ color: '#000000' }}>
+
+                      {/* Summary */}
+                      {summary && (
+                        <section>
+                          <h2 className="font-bold mb-1 uppercase tracking-wide border-b-[0.3mm] pb-0.5" style={{ color: '#000000', borderBottomColor: '#000000', fontSize: '11pt' }}>About me</h2>
+                          <p className="leading-relaxed whitespace-pre-wrap font-normal" style={{ color: '#000000', fontSize: '10pt', marginTop: '2mm' }}>{summary}</p>
+                        </section>
+                      )}
+
+                      {/* Experience */}
+                      {(experienceList.length > 0) && (
+                        <section>
+                          <h2 className="font-bold mb-2 uppercase tracking-wide border-b-[0.3mm] pb-0.5" style={{ color: '#000000', borderBottomColor: '#000000', fontSize: '11pt' }}>Work Experience</h2>
+                          <div className="space-y-4" style={{ marginTop: '2mm' }}>
+                            {experienceList.map(exp => (
+                              <div key={exp.id}>
+                                <div className="flex justify-between items-baseline mb-0.5">
+                                  <h3 className="font-bold" style={{ color: '#000000', fontSize: '10.5pt' }}>{exp.position}</h3>
+                                  <span className="font-normal shrink-0" style={{ color: '#000000', fontSize: '9pt' }}>
+                                    {exp.startDate} {exp.endDate ? `— ${exp.endDate}` : ''}
+                                  </span>
+                                </div>
+                                <div className="font-bold mb-1 italic" style={{ color: '#000000', fontSize: '9.5pt' }}>{exp.company}</div>
+                                {exp.description && (
+                                  <p className="leading-relaxed whitespace-pre-wrap font-normal" style={{ color: '#000000', fontSize: '9.5pt' }}>{exp.description}</p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </section>
+                      )}
+
+                      {/* Education */}
+                      {(educationList.length > 0) && (
+                        <section>
+                          <h2 className="font-bold mb-2 uppercase tracking-wide border-b-[0.3mm] pb-0.5" style={{ color: '#000000', borderBottomColor: '#000000', fontSize: '11pt' }}>Education</h2>
+                          <div className="space-y-3" style={{ marginTop: '2mm' }}>
+                            {educationList.map(edu => (
+                              <div key={edu.id} className="flex justify-between items-baseline">
+                                <div>
+                                  <h3 className="font-bold leading-tight" style={{ color: '#000000', fontSize: '10.5pt' }}>{edu.degree}</h3>
+                                  <div className="mt-0.5 italic" style={{ color: '#000000', fontSize: '9.5pt' }}>{edu.institution}</div>
+                                </div>
+                                <div className="font-normal shrink-0" style={{ color: '#000000', fontSize: '9pt' }}>{edu.graduationYear}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </section>
+                      )}
+
+                      {/* Skills */}
+                      {(cvData.skills.length > 0) && (
+                        <section>
+                          <h2 className="font-bold mb-1 uppercase tracking-wide border-b-[0.3mm] pb-0.5" style={{ color: '#000000', borderBottomColor: '#000000', fontSize: '11pt' }}>Skills</h2>
+                          <p className="font-normal leading-relaxed" style={{ color: '#000000', fontSize: '10pt', marginTop: '2mm' }}>
+                            {cvData.skills.join(' • ')}
+                          </p>
+                        </section>
+                      )}
+                    </div>
+
                   </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* HIDDEN HTML RENDERER FOR PDF GENERATION */}
-      {/* This element is rendered strictly at scale(1) with absolute pixel dimensions for pristine A4 export. */}
-      {/* It is removed from the normal document flow and viewport so users don't see it. */}
-      {/* Note: Do NOT use opacity-0 here because html2canvas will render it transparent. */}
-      {/* We use an absolute container safely out of view but at fixed coordinates so bounds are consistent. */}
-      <div style={{ position: 'absolute', top: 0, left: '-200vw', pointerEvents: 'none' }}>
-        <div
-          ref={cvRef}
-          className="w-[210mm] min-h-[297mm] bg-white overflow-hidden shrink-0"
-          style={{
-            backgroundColor: '#ffffff',
-            color: '#0f172a',
-            fontFamily: 'Inter, system-ui, -apple-system, sans-serif'
-          }}
-        >
-          <div className="p-12 h-full flex flex-col whitespace-normal break-words" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
-
-            {/* CV Header */}
-            <div className="flex flex-row items-center justify-between border-b-2 pb-6 mb-6" style={{ borderBottomColor: '#000000' }}>
-              <div className="flex-1">
-                <h1 className="text-4xl font-bold tracking-tight leading-none mb-3 uppercase" style={{ color: '#000000' }}>
-                  {personalInfo.fullName || "Your Name"}
-                </h1>
-                <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm font-normal" style={{ color: '#000000' }}>
-                  {personalInfo.email && <span><span className="font-semibold">Email:</span> {personalInfo.email}</span>}
-                  {personalInfo.phone && <span><span className="font-semibold">Phone:</span> {personalInfo.phone}</span>}
-                  {personalInfo.address && <span><span className="font-semibold">Address:</span> {personalInfo.address}</span>}
                 </div>
               </div>
-              {photo && (
-                <div className="ml-8 shrink-0">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={photo} alt="Profile" className="w-28 h-28 object-cover border" style={{ borderColor: '#000000' }} />
-                </div>
-              )}
             </div>
-
-            {/* Main Content Area - Switched to simple vertical flow for better ATS/OCR reading */}
-            <div className="flex-1 space-y-8" style={{ color: '#000000' }}>
-
-              {/* Summary */}
-              {summary && (
-                <section>
-                  <h2 className="text-lg font-bold mb-2 uppercase tracking-wide border-b pb-1" style={{ color: '#000000', borderBottomColor: '#000000' }}>About me</h2>
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap font-normal" style={{ color: '#000000' }}>{summary}</p>
-                </section>
-              )}
-
-              {/* Experience */}
-              {(experienceList.length > 0) && (
-                <section>
-                  <h2 className="text-lg font-bold mb-4 uppercase tracking-wide border-b pb-1" style={{ color: '#000000', borderBottomColor: '#000000' }}>Work Experience</h2>
-                  <div className="space-y-5">
-                    {experienceList.map(exp => (
-                      <div key={exp.id}>
-                        <div className="flex justify-between items-baseline mb-0.5">
-                          <h3 className="text-base font-bold" style={{ color: '#000000' }}>{exp.position}</h3>
-                          <span className="text-sm font-normal shrink-0" style={{ color: '#000000' }}>
-                            {exp.startDate} {exp.endDate ? `— ${exp.endDate}` : ''}
-                          </span>
-                        </div>
-                        <div className="text-sm font-bold mb-1.5 italic" style={{ color: '#000000' }}>{exp.company}</div>
-                        <p className="text-sm leading-relaxed whitespace-pre-wrap font-normal" style={{ color: '#000000' }}>{exp.description}</p>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {/* Education */}
-              {(educationList.length > 0) && (
-                <section>
-                  <h2 className="text-lg font-bold mb-4 uppercase tracking-wide border-b pb-1" style={{ color: '#000000', borderBottomColor: '#000000' }}>Education</h2>
-                  <div className="space-y-4">
-                    {educationList.map(edu => (
-                      <div key={edu.id} className="flex justify-between items-baseline">
-                        <div>
-                          <h3 className="text-base font-bold leading-tight" style={{ color: '#000000' }}>{edu.degree}</h3>
-                          <div className="text-sm mt-0.5 italic" style={{ color: '#000000' }}>{edu.institution}</div>
-                        </div>
-                        <div className="text-sm font-normal shrink-0" style={{ color: '#000000' }}>{edu.graduationYear}</div>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {/* Skills */}
-              {(cvData.skills.length > 0) && (
-                <section>
-                  <h2 className="text-lg font-bold mb-3 uppercase tracking-wide border-b pb-1" style={{ color: '#000000', borderBottomColor: '#000000' }}>Skills</h2>
-                  <p className="text-sm font-normal leading-relaxed" style={{ color: '#000000' }}>
-                    {cvData.skills.join(' • ')}
-                  </p>
-                </section>
-              )}
-            </div>
-
           </div>
         </div>
       </div>
@@ -848,7 +772,7 @@ export default function Home() {
 
         /* Dynamic scaling for the CV preview */
         @media (max-width: 1536px) {
-          :root { --cv-scale: 0.85; --cv-scale-width: calc(210mm * 0.85); }
+          :root { --cv-scale: 0.85; --cv-scale-width: calc(210mm * 0.85); flex: 1; justify-content: center; }
         }
         @media (max-width: 1280px) {
           :root { --cv-scale: 0.75; --cv-scale-width: calc(210mm * 0.75); }
