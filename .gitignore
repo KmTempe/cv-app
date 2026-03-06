@@ -40,3 +40,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .vscode
+/memory
+src/app/page.tsx
+/.agents/workflows
+/pr request.md
