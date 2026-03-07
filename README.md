@@ -1,36 +1,73 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CV Maker
+
+A modern, browser-based curriculum vitae builder with real-time preview and PDF export.
+
+**Live:** [cvmaker.l7feeders.dev](https://cvmaker.l7feeders.dev)
+
+## Features
+
+- **Personal Info** — Name, email, phone, address, and optional profile photo
+- **About Me** — Professional summary section
+- **Work Experience** — Multiple entries with company, title, dates, and description
+- **Education** — Multiple entries with institution, degree, and graduation year
+- **Skills** — Comma/Enter input with interactive oval pill tags
+- **Live Preview** — Real-time A4-scaled preview that mirrors the PDF output
+- **PDF Export** — Download as a clean, ATS-friendly PDF with full Unicode/Greek support (NotoSans)
+- **JSON Import/Export** — Save and load CV data as JSON files
+- **Auto-Save** — Data persists in localStorage between sessions
+- **Reorder Entries** — Drag-free up/down arrows with smooth FLIP card-swap animation
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Framework | [Next.js 16](https://nextjs.org) (App Router) |
+| Language | TypeScript |
+| Styling | Tailwind CSS v4 + inline styles |
+| PDF | [jsPDF](https://github.com/parallax/jsPDF) with embedded NotoSans fonts |
+| Testing | Jest + React Testing Library |
+| CI | GitHub Actions (preview-tests workflow) |
 
 ## Getting Started
 
-First, run the development server:
-
 ```bash
+# Install dependencies
+npm install
+
+# Run dev server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+
+# Run tests
+npm test
+
+# Build for production
+npm run build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) to use the editor.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start development server |
+| `npm run build` | Production build |
+| `npm run start` | Serve production build |
+| `npm test` | Run test suite |
+| `npm run test:watch` | Run tests in watch mode |
+| `npm run lint` | Run ESLint |
 
-## Learn More
+## Project Structure
 
-To learn more about Next.js, take a look at the following resources:
+```
+src/app/
+├── page.tsx         # Main CV editor component (editor + preview + PDF)
+├── page.test.tsx    # Test suite (7 tests)
+├── layout.tsx       # Root layout with metadata
+├── globals.css      # CSS variables, responsive scaling
+public/fonts/        # NotoSans font files for PDF Unicode support
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## License
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Private project.
