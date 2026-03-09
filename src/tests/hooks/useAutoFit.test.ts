@@ -8,21 +8,21 @@ class ResizeObserverMock {
     disconnect = jest.fn();
 }
 
-global.ResizeObserver = ResizeObserverMock as any;
+global.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver;
 
 describe('useAutoFit hook', () => {
     beforeAll(() => {
         jest.useFakeTimers();
         jest.spyOn(window, 'requestAnimationFrame').mockImplementation((cb: FrameRequestCallback) => {
-            global.requestAnimationFrameMock = cb as any;
+            global.requestAnimationFrameMock = cb as unknown as () => void;
             return 0;
         });
     });
 
     afterAll(() => {
         jest.useRealTimers();
-        if (window.requestAnimationFrame && (window.requestAnimationFrame as any).mockRestore) {
-            (window.requestAnimationFrame as any).mockRestore();
+        if (window.requestAnimationFrame && (window.requestAnimationFrame as jest.Mock).mockRestore) {
+            (window.requestAnimationFrame as jest.Mock).mockRestore();
         }
     });
 
@@ -47,7 +47,9 @@ describe('useAutoFit hook', () => {
         Object.defineProperty(mockContent, 'scrollHeight', { value: 2000, writable: true })
 
         act(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (result.current.containerRef as any).current = mockContainer;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (result.current.contentRef as any).current = mockContent;
         });
 

@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { ThemeSidebar } from '../../components/Editor/ThemeSidebar'
 import { ResumeProvider } from '../../context/ResumeContext'
 import '@testing-library/jest-dom'
