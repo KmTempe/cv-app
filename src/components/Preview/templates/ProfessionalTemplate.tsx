@@ -1,4 +1,5 @@
 import { ResumeData } from "../../../types/resume";
+import { sanitizeUrl } from "@/utils/sanitizeUrl";
 
 interface TemplateProps {
     data: ResumeData;
@@ -23,7 +24,7 @@ export function ProfessionalTemplate({ data, getSpacingClass }: TemplateProps) {
                 {photo && (
                     <div className="mb-6 flex justify-center">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={photo} alt="Profile" className="object-cover rounded-xl shadow-sm" style={{ width: '35mm', height: '35mm' }} />
+                        <img src={sanitizeUrl(photo)} alt="Profile" className="object-cover rounded-xl shadow-sm" style={{ width: '35mm', height: '35mm' }} />
                     </div>
                 )}
 

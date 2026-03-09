@@ -1,4 +1,5 @@
 import { ResumeData } from "../../../types/resume";
+import { sanitizeUrl } from "@/utils/sanitizeUrl";
 
 interface TemplateProps {
     data: ResumeData;
@@ -23,7 +24,7 @@ export function MinimalTemplate({ data, getSpacingClass }: TemplateProps) {
                 {photo && (
                     <div className="mb-4">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={photo} alt="Profile" className="object-cover rounded-full" style={{ width: '30mm', height: '30mm' }} />
+                        <img src={sanitizeUrl(photo)} alt="Profile" className="object-cover rounded-full" style={{ width: '30mm', height: '30mm' }} />
                     </div>
                 )}
                 <h1 className="font-bold tracking-tight mb-2" style={{ fontSize: '24pt' }}>
