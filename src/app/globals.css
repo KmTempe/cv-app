@@ -129,3 +129,29 @@ body {
     --cv-scale-width: calc(210mm * 0.4);
   }
 }
+
+@media print {
+  :root {
+    --cv-scale: 1 !important;
+    --cv-scale-width: 210mm !important;
+  }
+
+  @page {
+    margin: 0;
+    size: A4;
+  }
+
+  body,
+  html {
+    background: white;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  * {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}
