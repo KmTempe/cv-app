@@ -1,6 +1,7 @@
 "use client";
 
 import { useResume } from "../../context/ResumeContext";
+import { sanitizeUrl } from "@/utils/sanitizeUrl";
 
 export function PersonalInfoSection() {
     const { data, updatePersonalInfo, updatePhoto } = useResume();
@@ -28,7 +29,7 @@ export function PersonalInfoSection() {
                     <div className="flex items-center gap-4">
                         {photo && (
                             // eslint-disable-next-line @next/next/no-img-element
-                            <img src={photo} alt="Profile" className="w-16 h-16 rounded-full object-cover border-2 border-zinc-800" />
+                            <img src={sanitizeUrl(photo)} alt="Profile" className="w-16 h-16 rounded-full object-cover border-2 border-zinc-800" />
                         )}
                         <input type="file" accept="image/*" onChange={handlePhotoUpload} className="w-full text-sm text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-input file:text-foreground hover:file:bg-input/80 transition-all cursor-pointer" />
                         {photo && (

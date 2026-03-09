@@ -1,4 +1,5 @@
 import { ResumeData } from "../../../types/resume";
+import { sanitizeUrl } from "@/utils/sanitizeUrl";
 
 interface TemplateProps {
     data: ResumeData;
@@ -33,7 +34,7 @@ export function ModernTemplate({ data, getSpacingClass }: TemplateProps) {
                 {photo && (
                     <div className="ml-4 shrink-0">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={photo} alt="Profile" className="object-cover border" style={{ width: '28mm', height: '28mm', borderColor: '#000000' }} />
+                        <img src={sanitizeUrl(photo)} alt="Profile" className="object-cover border" style={{ width: '28mm', height: '28mm', borderColor: '#000000' }} />
                     </div>
                 )}
             </div>
