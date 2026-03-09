@@ -36,8 +36,11 @@ jest.mock('jspdf', () => {
 jest.mock('html2canvas', () => jest.fn())
 
 jest.mock('@hello-pangea/dnd', () => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     DragDropContext: ({ children }: any) => <div data-testid="dnd-context">{children}</div>,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     Droppable: ({ children }: any) => children({ droppableProps: {}, innerRef: jest.fn() }),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     Draggable: ({ children }: any) => children({ draggableProps: {}, dragHandleProps: {}, innerRef: jest.fn() }, { isDragging: false })
 }))
 
