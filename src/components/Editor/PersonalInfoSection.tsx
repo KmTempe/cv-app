@@ -1,11 +1,27 @@
 "use client";
 
+import { useState } from "react";
 import { useResume } from "../../context/ResumeContext";
+import { CVHistoryModal } from "../History/CVHistoryModal";
 import { sanitizeUrl } from "@/utils/sanitizeUrl";
+import { Trash2 } from "lucide-react";
 
 export function PersonalInfoSection() {
-    const { data, updatePersonalInfo, updatePhoto } = useResume();
+    const { data, updatePersonalInfo, updatePhoto, resetData, cvHistory, currentHash, saveToHistory, deleteFromHistory } = useResume();
     const { personalInfo, photo } = data;
+    const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+
+    const existingHistory = cvHistory.find(h => h.hash === currentHash);
+    const hasMatchingHistory = !!existingHistory;
+
+    const handleReset = () => {
+        const confirmed = window.confirm(
+            "Are you sure you want to reset your CV? This will clear all data and cannot be undone."
+        );
+        if (confirmed) {
+            resetData();
+        }
+    };
 
     const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -19,10 +35,54 @@ export function PersonalInfoSection() {
 
     return (
         <section className="bg-card border border-border/30 p-6 rounded-2xl shadow-xl">
-            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2 text-foreground">
-                <span className="bg-primary/20 text-primary p-1.5 rounded-lg"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg></span>
-                Personal Information
-            </h2>
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+                <h2 className="text-xl font-semibold flex items-center gap-2 text-foreground">
+                    <span className="bg-primary/20 text-primary p-1.5 rounded-lg"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg></span>
+                    Personal Information
+                </h2>
+                <div className="flex flex-wrap items-center gap-2">
+                    <button
+                        onClick={() => saveToHistory()}
+                        className="text-xs px-3 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-colors font-medium border border-primary/20"
+                    >
+                        Save to History
+                    </button>
+                    <button
+                        onClick={() => setIsHistoryModalOpen(true)}
+                        className="text-xs px-3 py-1.5 rounded-lg bg-secondary/10 text-secondary-foreground hover:bg-secondary transition-colors font-medium border border-border/50"
+                    >
+                        View History
+                    </button>
+                    <button
+                        onClick={handleReset}
+                        className="text-xs px-3 py-1.5 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors font-medium border border-destructive/20"
+                    >
+                        Reset CV
+                    </button>
+                </div>
+            </div>
+            {hasMatchingHistory && existingHistory && (
+                <div className="mb-4 bg-blue-500/10 border border-blue-500/20 px-4 py-3 rounded-xl flex flex-col md:flex-row gap-3 items-start md:items-center justify-start">
+                    <div className="text-sm text-blue-200">
+                        <span className="font-semibold text-blue-100">Saved CV Found:</span> You have a saved CV with this personal information (&quot;{existingHistory.name}&quot;).
+                    </div>
+                    <div className="flex items-center gap-2 mt-1 md:mt-0">
+                        <button onClick={() => saveToHistory()} className="text-xs px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-200 hover:bg-blue-500 hover:text-white transition-colors">
+                            Update Saved CV
+                        </button>
+                        <button
+                            onClick={() => deleteFromHistory(currentHash!)}
+                            title="Delete Saved CV"
+                            className="p-1.5 rounded-full shadow-sm transition-colors flex items-center justify-center shrink-0 w-8 h-8"
+                            style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)' }}
+                            onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#ef4444'; e.currentTarget.style.color = '#ffffff'; }}
+                            onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'; e.currentTarget.style.color = '#ef4444'; }}
+                        >
+                            <Trash2 size={16} />
+                        </button>
+                    </div>
+                </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5 md:col-span-2">
                     <label className="text-xs font-mono text-muted-foreground uppercase tracking-wider">Photo (Optional)</label>
@@ -54,6 +114,7 @@ export function PersonalInfoSection() {
                     <input type="text" value={personalInfo.address} onChange={e => updatePersonalInfo('address', e.target.value)} className="w-full bg-input border border-border/50 rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 focus:border-ring transition-all" placeholder="New York, USA" />
                 </div>
             </div>
+            <CVHistoryModal isOpen={isHistoryModalOpen} onClose={() => setIsHistoryModalOpen(false)} />
         </section>
     );
 }
