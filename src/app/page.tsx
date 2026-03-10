@@ -58,7 +58,7 @@ export default function Home() {
               result.experience = d.experience
                 .filter((e): e is Record<string, unknown> => typeof e === "object" && e !== null)
                 .map((e): Experience => ({
-                  id: typeof e.id === "string" ? e.id : Date.now().toString(),
+                  id: typeof e.id === "string" ? e.id : crypto.randomUUID(),
                   company: typeof e.company === "string" ? e.company : "",
                   position: typeof e.position === "string" ? e.position : "",
                   startDate: typeof e.startDate === "string" ? e.startDate : "",
@@ -72,7 +72,7 @@ export default function Home() {
               result.education = d.education
                 .filter((e): e is Record<string, unknown> => typeof e === "object" && e !== null)
                 .map((e): Education => ({
-                  id: typeof e.id === "string" ? e.id : Date.now().toString(),
+                  id: typeof e.id === "string" ? e.id : crypto.randomUUID(),
                   institution: typeof e.institution === "string" ? e.institution : "",
                   degree: typeof e.degree === "string" ? e.degree : "",
                   graduationYear: typeof e.graduationYear === "string" ? e.graduationYear : "",

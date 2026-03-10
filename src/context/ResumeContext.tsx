@@ -76,9 +76,27 @@ export function ResumeProvider({ children }: { children: ReactNode }) {
 
         setTimeout(() => {
             if (parsed) {
+                const seenExpIds = new Set<string>();
+                const safeExperience = parsed.experience?.map(exp => {
+                    let id = exp.id;
+                    if (!id || seenExpIds.has(id)) { id = crypto.randomUUID(); }
+                    seenExpIds.add(id);
+                    return { ...exp, id };
+                });
+
+                const seenEduIds = new Set<string>();
+                const safeEducation = parsed.education?.map(edu => {
+                    let id = edu.id;
+                    if (!id || seenEduIds.has(id)) { id = crypto.randomUUID(); }
+                    seenEduIds.add(id);
+                    return { ...edu, id };
+                });
+
                 setData(prev => ({
                     ...prev,
                     ...parsed,
+                    ...(safeExperience ? { experience: safeExperience } : {}),
+                    ...(safeEducation ? { education: safeEducation } : {}),
                     layout: { ...prev.layout, ...(parsed?.layout || {}) }
                 }));
             }
@@ -132,7 +150,29 @@ export function ResumeProvider({ children }: { children: ReactNode }) {
 
     const loadFromHistory = (hash: string) => {
         const item = cvHistory.find(h => h.hash === hash);
-        if (item) setData(item.data);
+        if (item) {
+            const seenExpIds = new Set<string>();
+            const safeExperience = item.data.experience?.map(exp => {
+                let id = exp.id;
+                if (!id || seenExpIds.has(id)) { id = crypto.randomUUID(); }
+                seenExpIds.add(id);
+                return { ...exp, id };
+            });
+
+            const seenEduIds = new Set<string>();
+            const safeEducation = item.data.education?.map(edu => {
+                let id = edu.id;
+                if (!id || seenEduIds.has(id)) { id = crypto.randomUUID(); }
+                seenEduIds.add(id);
+                return { ...edu, id };
+            });
+
+            setData({
+                ...item.data,
+                ...(safeExperience ? { experience: safeExperience } : {}),
+                ...(safeEducation ? { education: safeEducation } : {})
+            });
+        }
     };
 
     const deleteFromHistory = (hash: string) => {
@@ -162,7 +202,7 @@ export function ResumeProvider({ children }: { children: ReactNode }) {
     const addExperience = () => {
         setData(prev => ({
             ...prev,
-            experience: [...prev.experience, { id: Date.now().toString(), company: "", position: "", startDate: "", endDate: "", description: "", isHidden: false }]
+            experience: [...prev.experience, { id: crypto.randomUUID(), company: "", position: "", startDate: "", endDate: "", description: "", isHidden: false }]
         }));
     };
 
@@ -207,7 +247,7 @@ export function ResumeProvider({ children }: { children: ReactNode }) {
     const addEducation = () => {
         setData(prev => ({
             ...prev,
-            education: [...prev.education, { id: Date.now().toString(), institution: "", degree: "", graduationYear: "", isHidden: false }]
+            education: [...prev.education, { id: crypto.randomUUID(), institution: "", degree: "", graduationYear: "", isHidden: false }]
         }));
     };
 

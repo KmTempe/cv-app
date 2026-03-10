@@ -10,6 +10,13 @@ export function PersonalInfoSection() {
     const { data, updatePersonalInfo, updatePhoto, resetData, cvHistory, currentHash, saveToHistory, deleteFromHistory } = useResume();
     const { personalInfo, photo } = data;
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+    const [showToast, setShowToast] = useState(false);
+
+    const handleSave = () => {
+        saveToHistory();
+        setShowToast(true);
+        setTimeout(() => setShowToast(false), 800);
+    };
 
     const existingHistory = cvHistory.find(h => h.hash === currentHash);
     const hasMatchingHistory = !!existingHistory;
@@ -42,7 +49,7 @@ export function PersonalInfoSection() {
                 </h2>
                 <div className="flex flex-wrap items-center gap-2">
                     <button
-                        onClick={() => saveToHistory()}
+                        onClick={handleSave}
                         className="text-xs px-3 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-colors font-medium border border-primary/20"
                     >
                         Save to History
@@ -67,7 +74,7 @@ export function PersonalInfoSection() {
                         <span className="font-semibold text-blue-100">Saved CV Found:</span> You have a saved CV with this personal information (&quot;{existingHistory.name}&quot;).
                     </div>
                     <div className="flex items-center gap-2 mt-1 md:mt-0">
-                        <button onClick={() => saveToHistory()} className="text-xs px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-200 hover:bg-blue-500 hover:text-white transition-colors">
+                        <button onClick={handleSave} className="text-xs px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-200 hover:bg-blue-500 hover:text-white transition-colors">
                             Update Saved CV
                         </button>
                         <button
@@ -115,6 +122,15 @@ export function PersonalInfoSection() {
                 </div>
             </div>
             <CVHistoryModal isOpen={isHistoryModalOpen} onClose={() => setIsHistoryModalOpen(false)} />
+            <div
+                className={`fixed bottom-6 left-1/2 -translate-x-1/2 px-5 py-2.5 rounded-full shadow-xl text-sm font-medium z-50 flex items-center gap-2 bg-emerald-500 text-white shadow-emerald-500/20 transition-all duration-500 ease-in-out ${showToast ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"
+                    }`}
+            >
+                <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                CV Saved Successfully!
+            </div>
         </section>
     );
 }
