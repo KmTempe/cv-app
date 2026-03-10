@@ -4,6 +4,7 @@ import { useRef } from "react";
 import { useResume } from "../context/ResumeContext";
 import { Editor } from "../components/Editor/Editor";
 import { Preview } from "../components/Preview/Preview";
+import type { ResumeData, Experience, Education, LayoutSettings } from "../types/resume";
 
 export default function Home() {
   const { data, setData } = useResume();
@@ -31,29 +32,71 @@ export default function Home() {
           const parsed = JSON.parse(event.target?.result as string);
 
           // Basic validation to prevent arbitrary data injection
-          const validateData = (data: any) => {
+          const validateData = (data: unknown): Partial<ResumeData> => {
             if (typeof data !== "object" || data === null) return {};
-            const result: any = {};
-            if (data.personalInfo && typeof data.personalInfo === "object") {
+            const d = data as Record<string, unknown>;
+            const result: Partial<ResumeData> = {};
+
+            if (d.personalInfo && typeof d.personalInfo === "object") {
+              const pi = d.personalInfo as Record<string, unknown>;
               result.personalInfo = {
-                fullName: typeof data.personalInfo.fullName === "string" ? data.personalInfo.fullName : "",
-                email: typeof data.personalInfo.email === "string" ? data.personalInfo.email : "",
-                phone: typeof data.personalInfo.phone === "string" ? data.personalInfo.phone : "",
-                address: typeof data.personalInfo.address === "string" ? data.personalInfo.address : "",
+                fullName: typeof pi.fullName === "string" ? pi.fullName : "",
+                email: typeof pi.email === "string" ? pi.email : "",
+                phone: typeof pi.phone === "string" ? pi.phone : "",
+                address: typeof pi.address === "string" ? pi.address : "",
               };
             }
-            if (typeof data.summary === "string") result.summary = data.summary;
-            if (typeof data.photo === "string") result.photo = data.photo;
-            if (Array.isArray(data.experience)) result.experience = data.experience;
-            if (Array.isArray(data.education)) result.education = data.education;
-            if (Array.isArray(data.projects)) result.projects = data.projects;
-            if (Array.isArray(data.skills)) result.skills = data.skills;
-            if (data.layout && typeof data.layout === "object") {
-              result.layout = {
-                theme: typeof data.layout.theme === "string" ? data.layout.theme : "modern",
-                font: typeof data.layout.font === "string" ? data.layout.font : "inter",
-                primaryColor: typeof data.layout.primaryColor === "string" ? data.layout.primaryColor : "#4ade80"
-              };
+
+            if (typeof d.summary === "string") result.summary = d.summary;
+            if (typeof d.photo === "string") result.photo = d.photo;
+
+            if (Array.isArray(d.skills)) {
+              result.skills = d.skills.filter((s): s is string => typeof s === "string");
+            }
+
+            if (Array.isArray(d.experience)) {
+              result.experience = d.experience
+                .filter((e): e is Record<string, unknown> => typeof e === "object" && e !== null)
+                .map((e): Experience => ({
+                  id: typeof e.id === "string" ? e.id : Date.now().toString(),
+                  company: typeof e.company === "string" ? e.company : "",
+                  position: typeof e.position === "string" ? e.position : "",
+                  startDate: typeof e.startDate === "string" ? e.startDate : "",
+                  endDate: typeof e.endDate === "string" ? e.endDate : "",
+                  description: typeof e.description === "string" ? e.description : "",
+                  isHidden: typeof e.isHidden === "boolean" ? e.isHidden : false,
+                }));
+            }
+
+            if (Array.isArray(d.education)) {
+              result.education = d.education
+                .filter((e): e is Record<string, unknown> => typeof e === "object" && e !== null)
+                .map((e): Education => ({
+                  id: typeof e.id === "string" ? e.id : Date.now().toString(),
+                  institution: typeof e.institution === "string" ? e.institution : "",
+                  degree: typeof e.degree === "string" ? e.degree : "",
+                  graduationYear: typeof e.graduationYear === "string" ? e.graduationYear : "",
+                  isHidden: typeof e.isHidden === "boolean" ? e.isHidden : false,
+                }));
+            }
+
+            if (d.layout && typeof d.layout === "object") {
+              const l = d.layout as Record<string, unknown>;
+              const layout: Partial<LayoutSettings> = {};
+
+              if (l.template === "minimal" || l.template === "modern" || l.template === "professional") {
+                layout.template = l.template;
+              }
+              if (l.font === "inter" || l.font === "fira-code" || l.font === "serif" || l.font === "sans") {
+                layout.font = l.font;
+              }
+              if (l.spacing === "compact" || l.spacing === "normal" || l.spacing === "spacious") {
+                layout.spacing = l.spacing;
+              }
+
+              if (Object.keys(layout).length > 0) {
+                result.layout = layout as LayoutSettings;
+              }
             }
             return result;
           };
