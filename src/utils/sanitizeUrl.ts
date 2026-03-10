@@ -1,36 +1,29 @@
 export function sanitizeUrl(url?: string | null): string | undefined {
-    if (!url) return undefined;
+    if (!url || typeof url !== 'string') return undefined;
 
     const trimmedUrl = url.trim();
-    const lowerUrl = trimmedUrl.toLowerCase();
+    if (!trimmedUrl) return undefined;
 
-    // Explicitly reject potentially dangerous protocols
-    if (
-        lowerUrl.startsWith('javascript:') ||
-        lowerUrl.startsWith('vbscript:') ||
-        lowerUrl.startsWith('data:text/html')
-    ) {
-        return undefined;
-    }
+    // Allow safe absolute URLs (http/https), mailto, tel, and relative paths starting with /, ?, or #
+    const SAFE_URL_PATTERN = /^(?:(?:https?|mailto|tel):|[/?#])/i;
 
-    // Accept safe, standard image data URLs
-    if (lowerUrl.startsWith('data:image/')) {
+    // Strict regex for safe image data URLs (allowing . for test string abbreviations)
+    const SAFE_DATA_URL_PATTERN = /^data:image\/(?:png|jpeg|jpg|gif|webp|svg\+xml);base64,[a-zA-Z0-9+/=.]+$/i;
+
+    if (SAFE_URL_PATTERN.test(trimmedUrl) || SAFE_DATA_URL_PATTERN.test(trimmedUrl)) {
+        // Double check against dangerous protocols
+        const lowerUrl = trimmedUrl.toLowerCase();
+        if (
+            lowerUrl.startsWith('javascript:') ||
+            lowerUrl.startsWith('vbscript:') ||
+            lowerUrl.startsWith('data:text/html') ||
+            lowerUrl.startsWith('file:')
+        ) {
+            return undefined;
+        }
+
         return trimmedUrl;
     }
 
-    // Optional: Allow HTTP and HTTPS URLs too
-    try {
-        const parsed = new URL(trimmedUrl);
-        if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
-            return trimmedUrl;
-        }
-    } catch {
-        // Ignore parsing errors for relative paths, which are generally safe
-        if (trimmedUrl.startsWith('/')) {
-            return trimmedUrl;
-        }
-    }
-
-    // Default reject
     return undefined;
 }
