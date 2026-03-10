@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { ResumeData, Experience, Education, LayoutSettings } from "../types/resume";
+import { ResumeData, Experience, Education, LayoutSettings, SavedCV } from "../types/resume";
 
 // Extend LayoutSettings to include template inline for context if needed, otherwise rely on types/resume.ts
 // Assumption: LayoutSettings is defined in types/resume.ts. We should make sure we pass valid strings.
@@ -34,16 +34,36 @@ interface ResumeContextType {
     reorderEducation: (startIndex: number, endIndex: number) => void;
     setSkills: (skills: string[]) => void;
     updateLayout: (field: keyof LayoutSettings, value: string) => void;
+    resetData: () => void;
+    cvHistory: SavedCV[];
+    currentHash: string | null;
+    saveToHistory: () => Promise<void>;
+    loadFromHistory: (hash: string) => void;
+    deleteFromHistory: (hash: string) => void;
 }
 
 const ResumeContext = createContext<ResumeContextType | undefined>(undefined);
 
 export function ResumeProvider({ children }: { children: ReactNode }) {
     const [data, setData] = useState<ResumeData>(defaultData);
+    const [cvHistory, setCvHistory] = useState<SavedCV[]>([]);
+    const [currentHash, setCurrentHash] = useState<string | null>(null);
     const [isLoaded, setIsLoaded] = useState(false);
 
     // Load from local storage on initial mount
     useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const savedHistory = localStorage.getItem('cvHistory');
+            if (savedHistory) {
+                try {
+                    // eslint-disable-next-line react-hooks/set-state-in-effect
+                    setCvHistory(JSON.parse(savedHistory));
+                } catch (e) {
+                    console.error("Failed to parse history", e);
+                }
+            }
+        }
+
         const savedData = typeof window !== 'undefined' ? localStorage.getItem('cvAutoSave') : null;
         let parsed: Partial<ResumeData> | null = null;
         if (savedData) {
@@ -65,6 +85,59 @@ export function ResumeProvider({ children }: { children: ReactNode }) {
             setIsLoaded(true);
         }, 0);
     }, []);
+
+    // Save history to local storage on every change
+    useEffect(() => {
+        if (!isLoaded) return;
+        localStorage.setItem('cvHistory', JSON.stringify(cvHistory));
+    }, [cvHistory, isLoaded]);
+
+    const generateHash = async (text: string) => {
+        const encoder = new TextEncoder();
+        const dataToHash = encoder.encode(text);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', dataToHash);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    };
+
+    useEffect(() => {
+        const { fullName, email, phone, address } = data.personalInfo;
+        const infoString = `${fullName}|${email}|${phone}|${address}`;
+        if (fullName || email || phone || address) {
+            generateHash(infoString).then(hash => setCurrentHash(hash));
+        } else {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            setCurrentHash(null);
+        }
+    }, [data.personalInfo]);
+
+    const saveToHistory = async () => {
+        if (!currentHash) return;
+        const newSavedCV: SavedCV = {
+            hash: currentHash,
+            timestamp: Date.now(),
+            name: data.personalInfo.fullName || "Untitled CV",
+            data: data
+        };
+        setCvHistory(prev => {
+            const existingIndex = prev.findIndex(item => item.hash === currentHash);
+            if (existingIndex >= 0) {
+                const newHistory = [...prev];
+                newHistory[existingIndex] = newSavedCV;
+                return newHistory;
+            }
+            return [...prev, newSavedCV];
+        });
+    };
+
+    const loadFromHistory = (hash: string) => {
+        const item = cvHistory.find(h => h.hash === hash);
+        if (item) setData(item.data);
+    };
+
+    const deleteFromHistory = (hash: string) => {
+        setCvHistory(prev => prev.filter(h => h.hash !== hash));
+    };
 
     // Save to local storage on every change
     useEffect(() => {
@@ -182,6 +255,15 @@ export function ResumeProvider({ children }: { children: ReactNode }) {
         setData(prev => ({ ...prev, layout: { ...prev.layout, [field]: value } }));
     };
 
+    const resetData = () => {
+        if (typeof window !== 'undefined') {
+            localStorage.removeItem('cvAutoSave');
+            // Remove the cookie correctly, keeping secure flag in mind but simple expiration is enough
+            document.cookie = 'cvDataSaved=; max-age=0; path=/;';
+        }
+        setData(defaultData);
+    };
+
     return (
         <ResumeContext.Provider
             value={{
@@ -201,7 +283,13 @@ export function ResumeProvider({ children }: { children: ReactNode }) {
                 moveEducation,
                 reorderEducation,
                 setSkills,
-                updateLayout
+                updateLayout,
+                resetData,
+                cvHistory,
+                currentHash,
+                saveToHistory,
+                loadFromHistory,
+                deleteFromHistory
             }}
         >
             {children}

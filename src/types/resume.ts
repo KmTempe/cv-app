@@ -38,3 +38,10 @@ export type ResumeData = {
     photo: string | null;
     layout: LayoutSettings;
 };
+
+export type SavedCV = {
+    hash: string;
+    timestamp: number;
+    name: string;
+    data: ResumeData;
+};
