@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef } from "react";
-import pkg from "../../package.json";
 import { useResume } from "../context/ResumeContext";
 import { Editor } from "../components/Editor/Editor";
 import { Preview } from "../components/Preview/Preview";
@@ -30,11 +29,42 @@ export default function Home() {
       reader.onload = (event) => {
         try {
           const parsed = JSON.parse(event.target?.result as string);
+
+          // Basic validation to prevent arbitrary data injection
+          const validateData = (data: any) => {
+            if (typeof data !== "object" || data === null) return {};
+            const result: any = {};
+            if (data.personalInfo && typeof data.personalInfo === "object") {
+              result.personalInfo = {
+                fullName: typeof data.personalInfo.fullName === "string" ? data.personalInfo.fullName : "",
+                email: typeof data.personalInfo.email === "string" ? data.personalInfo.email : "",
+                phone: typeof data.personalInfo.phone === "string" ? data.personalInfo.phone : "",
+                address: typeof data.personalInfo.address === "string" ? data.personalInfo.address : "",
+              };
+            }
+            if (typeof data.summary === "string") result.summary = data.summary;
+            if (typeof data.photo === "string") result.photo = data.photo;
+            if (Array.isArray(data.experience)) result.experience = data.experience;
+            if (Array.isArray(data.education)) result.education = data.education;
+            if (Array.isArray(data.projects)) result.projects = data.projects;
+            if (Array.isArray(data.skills)) result.skills = data.skills;
+            if (data.layout && typeof data.layout === "object") {
+              result.layout = {
+                theme: typeof data.layout.theme === "string" ? data.layout.theme : "modern",
+                font: typeof data.layout.font === "string" ? data.layout.font : "inter",
+                primaryColor: typeof data.layout.primaryColor === "string" ? data.layout.primaryColor : "#4ade80"
+              };
+            }
+            return result;
+          };
+
+          const safeData = validateData(parsed);
+
           // Set full data back, keeping defaults if something is missing
           setData(prev => ({
             ...prev,
-            ...parsed,
-            layout: { ...prev.layout, ...(parsed.layout || {}) }
+            ...safeData,
+            layout: { ...prev.layout, ...(safeData.layout || {}) }
           }));
         } catch (error) {
           console.error('Error parsing JSON:', error);
@@ -102,7 +132,7 @@ export default function Home() {
           <p className="flex items-center gap-2">
             <span className="text-foreground font-medium">Kosmas Temperekidis</span>
             <span className="hidden md:inline text-muted-foreground/30">•</span>
-            <span>Version: <span className="font-mono bg-input px-2 py-0.5 rounded text-foreground">v{pkg.version}</span></span>
+            <span>Version: <span className="font-mono bg-input px-2 py-0.5 rounded text-foreground">v{process.env.APP_VERSION || "0.4.0"}</span></span>
           </p>
         </div>
       </footer>
