@@ -50,3 +50,5 @@ test_err.txt
 pr request.md
 test_plan.md
 /build.log
+/beta-plan.md
+/.swc

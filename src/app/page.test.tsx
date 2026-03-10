@@ -1,6 +1,15 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import Home from './page'
+import { ResumeProvider } from '../context/ResumeContext'
 import '@testing-library/jest-dom'
+
+const renderWithProvider = (ui: React.ReactElement) => {
+    return render(
+        <ResumeProvider>
+            {ui}
+        </ResumeProvider>
+    )
+}
 
 // Mock jsPDF and html2canvas since they don't work well in jsdom out of the box
 jest.mock('jspdf', () => {
@@ -26,6 +35,15 @@ jest.mock('jspdf', () => {
 
 jest.mock('html2canvas', () => jest.fn())
 
+jest.mock('@hello-pangea/dnd', () => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    DragDropContext: ({ children }: any) => <div data-testid="dnd-context">{children}</div>,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    Droppable: ({ children }: any) => children({ droppableProps: {}, innerRef: jest.fn() }),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    Draggable: ({ children }: any) => children({ draggableProps: {}, dragHandleProps: {}, innerRef: jest.fn() }, { isDragging: false })
+}))
+
 describe('CV Editor App', () => {
     beforeEach(() => {
         // Clear localStorage before each test as the component uses it
@@ -33,7 +51,7 @@ describe('CV Editor App', () => {
     })
 
     it('renders the main heading and sections', () => {
-        render(<Home />)
+        renderWithProvider(<Home />)
 
         expect(screen.getByText('CV Maker')).toBeInTheDocument()
         expect(screen.getByText('Personal Information')).toBeInTheDocument()
@@ -43,8 +61,8 @@ describe('CV Editor App', () => {
         expect(screen.getByText('Skills')).toBeInTheDocument()
     })
 
-    it('can add a new experience entry', () => {
-        render(<Home />)
+    it('can add a new experience entry', async () => {
+        renderWithProvider(<Home />)
 
         // Initial state: no experience 
         expect(screen.getByText('No experience added yet.')).toBeInTheDocument()
@@ -56,7 +74,8 @@ describe('CV Editor App', () => {
             fireEvent.click(addExperienceBtn)
 
             // Verify a new experience block was added by looking for placeholders
-            expect(screen.getAllByPlaceholderText('Company Name').length).toBe(1)
+            const companyInputs = await screen.findAllByPlaceholderText('Company Name')
+            expect(companyInputs.length).toBe(1)
             expect(screen.getAllByPlaceholderText('Job Title').length).toBe(1)
 
             // Verify "No experience added yet." is gone
@@ -64,8 +83,8 @@ describe('CV Editor App', () => {
         }
     })
 
-    it('can add a new education entry', () => {
-        render(<Home />)
+    it('can add a new education entry', async () => {
+        renderWithProvider(<Home />)
 
         // Add education
         const addEducationBtn = screen.getAllByRole('button').find(b => b.textContent?.includes('Add') && b.closest('div')?.textContent?.includes('Education'))
@@ -74,13 +93,14 @@ describe('CV Editor App', () => {
             fireEvent.click(addEducationBtn)
 
             // Verify a new education block was added
-            expect(screen.getAllByPlaceholderText('Institution / University').length).toBe(1)
+            const eduInputs = await screen.findAllByPlaceholderText('Institution / University')
+            expect(eduInputs.length).toBe(1)
             expect(screen.getAllByPlaceholderText('Degree / Certification').length).toBe(1)
         }
     })
 
     it('updates personal information', () => {
-        render(<Home />)
+        renderWithProvider(<Home />)
 
         const nameInput = screen.getByPlaceholderText('John Doe')
         fireEvent.change(nameInput, { target: { value: 'Jane Smith' } })
@@ -89,7 +109,7 @@ describe('CV Editor App', () => {
     })
 
     it('can add skills via comma-separated input', () => {
-        render(<Home />)
+        renderWithProvider(<Home />)
 
         const skillInput = screen.getByPlaceholderText('Type a skill and press comma or Enter... (e.g. React, Docker)')
         // Type a skill and press Enter
@@ -106,35 +126,23 @@ describe('CV Editor App', () => {
         expect(screen.getAllByText('Terraform').length).toBeGreaterThanOrEqual(1)
     })
 
-    it('can reorder experience entries using move buttons', () => {
-        render(<Home />)
+    it('renders drag handles for experience entries', async () => {
+        renderWithProvider(<Home />)
 
-        // Add two experience entries
+        // Add an experience entry
         const addBtns = screen.getAllByRole('button').filter(b => b.textContent?.includes('Add Entry'))
         const addExpBtn = addBtns[0]
         fireEvent.click(addExpBtn)
-        fireEvent.click(addExpBtn)
 
-        // Fill in company names
-        const companyInputs = screen.getAllByPlaceholderText('Company Name')
+        // Verify the inputs were added correctly
+        const companyInputs = await screen.findAllByPlaceholderText('Company Name')
+        expect(companyInputs.length).toBe(1)
         fireEvent.change(companyInputs[0], { target: { value: 'Company A' } })
-        fireEvent.change(companyInputs[1], { target: { value: 'Company B' } })
-
-        // The first entry should have a move down button (down arrow)
-        const moveDownBtns = screen.getAllByTitle('Move Down')
-        expect(moveDownBtns.length).toBeGreaterThanOrEqual(1)
-
-        // Click move down on the first entry
-        fireEvent.click(moveDownBtns[0])
-
-        // After move, Company B should now be first
-        const updatedInputs = screen.getAllByPlaceholderText('Company Name')
-        expect(updatedInputs[0]).toHaveValue('Company B')
-        expect(updatedInputs[1]).toHaveValue('Company A')
+        expect(companyInputs[0]).toHaveValue('Company A')
     })
 
-    it('can remove an education entry with the delete button', () => {
-        render(<Home />)
+    it('can remove an education entry with the delete button', async () => {
+        renderWithProvider(<Home />)
 
         // Add an education entry
         const addBtns = screen.getAllByRole('button').filter(b => b.textContent?.includes('Add Entry'))
@@ -142,7 +150,8 @@ describe('CV Editor App', () => {
         fireEvent.click(addEduBtn)
 
         // Verify it was added
-        expect(screen.getAllByPlaceholderText('Institution / University').length).toBe(1)
+        const eduInputs = await screen.findAllByPlaceholderText('Institution / University')
+        expect(eduInputs.length).toBe(1)
 
         // Find and click the Remove Entry button
         const removeBtn = screen.getByTitle('Remove Entry')

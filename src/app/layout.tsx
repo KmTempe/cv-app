@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Fira_Code } from "next/font/google";
 import "./globals.css";
+import { ResumeProvider } from "../context/ResumeContext";
 
 const interSans = Inter({
   variable: "--font-inter",
@@ -27,7 +28,9 @@ export default function RootLayout({
       <body
         className={`${interSans.variable} ${firaCode.variable} antialiased`}
       >
-        {children}
+        <ResumeProvider>
+          {children}
+        </ResumeProvider>
       </body>
     </html>
   );
