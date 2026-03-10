@@ -52,3 +52,4 @@ test_plan.md
 /build.log
 /beta-plan.md
 /.swc
+cleanup_vercel.ps1
